@@ -1,0 +1,59 @@
+@import url('https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@600;700;800;900&display=swap');
+@import 'tailwindcss';
+
+@theme {
+  --color-pastelMint: #a8e6cf;
+  --color-pastelYellow: #ffdf85;
+  --color-pastelPink: #ffb7b2;
+  --color-pastelBlue: #9ddbf9;
+  --color-inkBlack: #111111;
+  --color-paperWhite: #ffffff;
+  --font-sans: 'Nunito', 'Segoe UI', sans-serif;
+  --font-display: 'Fredoka One', 'Arial Black', sans-serif;
+}
+
+@layer base {
+  * {
+    @apply box-border;
+  }
+
+  body {
+    @apply m-0 min-h-screen bg-paperWhite font-sans text-inkBlack antialiased;
+  }
+
+  h1,
+  h2,
+  h3 {
+    @apply font-display text-inkBlack;
+  }
+
+  a {
+    @apply text-inherit no-underline;
+  }
+}
+
+@layer utilities {
+  .cute-box {
+    @apply rounded-xl border-4 border-inkBlack bg-paperWhite shadow-[6px_6px_0px_0px_#111111] transition-transform hover:-translate-y-1 hover:shadow-[6px_8px_0px_0px_#111111];
+  }
+  
+  .cute-button {
+    @apply inline-flex items-center justify-center rounded-full border-4 border-inkBlack bg-pastelYellow px-8 py-3 text-center font-display text-lg uppercase tracking-wide leading-none text-inkBlack shadow-[4px_4px_0px_0px_#111111] transition-transform hover:-translate-y-1 hover:shadow-[4px_6px_0px_0px_#111111] active:translate-y-1 active:shadow-[0px_0px_0px_0px_#111111];
+  }
+
+  .cute-control-button {
+    @apply inline-flex items-center justify-center rounded-full border-4 border-inkBlack bg-pastelPink text-center leading-none text-inkBlack shadow-[4px_4px_0px_0px_#111111] transition-colors hover:bg-[#f09490] active:bg-[#e87e78];
+  }
+
+  .cute-control-button-close {
+    @apply hover:bg-[#e87e78] active:bg-[#da6a64];
+  }
+
+  .cute-button-share {
+    @apply bg-pastelMint hover:bg-pastelPink;
+  }
+
+  .cute-input {
+    @apply rounded-xl border-4 border-inkBlack bg-paperWhite px-4 py-3 font-bold text-inkBlack outline-none transition-transform focus:-translate-y-1 focus:shadow-[4px_4px_0px_0px_#111111];
+  }
+}
