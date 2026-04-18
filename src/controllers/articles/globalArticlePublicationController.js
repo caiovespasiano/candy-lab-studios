@@ -158,6 +158,16 @@ class GlobalArticlePublicationController {
     }
   }
 
+  applyArticleCatalogReorder(sortedArticleCatalog, correlationIdentifier) {
+    try {
+      const normalizedCatalog = normalizeCatalogOrderIndex(sortedArticleCatalog)
+      persistArticleCatalog(normalizedCatalog, this.storageClient)
+      return resolveSuccessResponse('Ordem de exibição atualizada com sucesso.', normalizedCatalog)
+    } catch (unknownError) {
+      return mapHttpStatusToSanitizedErrorResponse(500, correlationIdentifier)
+    }
+  }
+
   updateArticle(articleIdentifier, rawArticleInput, correlationIdentifier) {
     try {
       const currentArticleCatalog = loadPersistedArticleCatalog(this.storageClient, this.nowTimestampProvider)

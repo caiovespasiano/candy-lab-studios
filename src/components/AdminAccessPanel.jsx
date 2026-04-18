@@ -1,4 +1,5 @@
-import { Fragment, useEffect, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useRef, useState } from 'react'
+import { Reorder } from 'framer-motion'
 import { FaArrowLeft, FaEdit, FaGripVertical, FaLock, FaPlus, FaSignOutAlt, FaTrash, FaUpload } from 'react-icons/fa'
 import { globalAdminAccessConfig } from '../constants/globalAdminAccessConfig'
 import { requestAdminAuthenticationUsingGateway } from '../services/adminAuthenticationService'
@@ -321,6 +322,70 @@ function ArticleFormFields({
   )
 }
 
+const ArticleReorderItem = memo(function ArticleReorderItem({ articleData, onDragStart, onDragEnd, onEdit, onToggleVisibility, onDelete }) {
+  return (
+    <Reorder.Item
+      value={articleData}
+      onDragStart={onDragStart}
+      onDragEnd={onDragEnd}
+      dragMomentum={false}
+      className="relative list-none rounded-xl border-4 border-inkBlack bg-paperWhite shadow-[6px_6px_0px_0px_#111111] cursor-grab p-4 active:cursor-grabbing"
+    >
+      <header className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <FaGripVertical
+            className="shrink-0 text-inkBlack/30"
+            aria-hidden="true"
+            title="Arraste para reordenar"
+          />
+          <div>
+            <h3 className="text-lg font-display text-inkBlack">{articleData.title}</h3>
+            <p className="text-xs font-bold uppercase tracking-wider text-inkBlack/70">
+              {articleData.subtitle}
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          {articleData.galleryImageUrls?.length > 0 && (
+            <span className="rounded-lg border-2 border-inkBlack bg-pastelBlue px-2 py-1 text-xs font-black uppercase">
+              {articleData.galleryImageUrls.length} foto
+              {articleData.galleryImageUrls.length !== 1 ? 's' : ''}
+            </span>
+          )}
+          <span className="rounded-lg border-2 border-inkBlack bg-pastelYellow px-2 py-1 text-xs font-black uppercase">
+            {articleData.isPublished ? 'Publicado' : 'Oculto'}
+          </span>
+        </div>
+      </header>
+      <div className="mt-4 flex flex-wrap gap-2">
+        <button
+          type="button"
+          className="cute-button flex h-10 items-center justify-center gap-1 bg-pastelYellow px-4 py-1 text-xs"
+          onClick={() => onEdit(articleData)}
+        >
+          <FaEdit aria-hidden="true" />
+          <span>Editar</span>
+        </button>
+        <button
+          type="button"
+          className="cute-button h-10 bg-pastelMint px-4 py-1 text-xs"
+          onClick={() => onToggleVisibility(articleData.id)}
+        >
+          {articleData.isPublished ? 'Ocultar' : 'Publicar'}
+        </button>
+        <button
+          type="button"
+          className="cute-button flex h-10 items-center justify-center gap-1 bg-pastelPink px-4 py-1 text-xs"
+          onClick={() => onDelete(articleData.id)}
+        >
+          <FaTrash aria-hidden="true" />
+          <span>Excluir</span>
+        </button>
+      </div>
+    </Reorder.Item>
+  )
+})
+
 export function AdminAccessPanel({ articlePublicationController, onArticleCatalogChange, onNavigateBackToLanding }) {
   const [adminCredentialsFormState, setAdminCredentialsFormState] = useState({
     username: '',
@@ -341,8 +406,9 @@ export function AdminAccessPanel({ articlePublicationController, onArticleCatalo
   const [globalBackgroundHexColor, setGlobalBackgroundHexColor] = useState(() => {
     return loadPersistedGlobalBackgroundHexColor()
   })
-  const dragSourceIndexRef = useRef(null)
-  const [dragOverIndex, setDragOverIndex] = useState(null)
+  const [sortableArticleCatalog, setSortableArticleCatalog] = useState(() => adminArticleCatalog)
+  const currentSortOrderRef = useRef(adminArticleCatalog)
+  const preDragCatalogRef = useRef(null)
   const [isArticleModalOpen, setIsArticleModalOpen] = useState(false)
 
   useEffect(() => {
@@ -367,6 +433,11 @@ export function AdminAccessPanel({ articlePublicationController, onArticleCatalo
     const articleCatalogLoadResult = articlePublicationController.listAllArticleCatalog()
     setAdminArticleCatalog(articleCatalogLoadResult.articleCatalog)
   }, [articlePublicationController])
+
+  useEffect(() => {
+    setSortableArticleCatalog(adminArticleCatalog)
+    currentSortOrderRef.current = adminArticleCatalog
+  }, [adminArticleCatalog])
 
   function handleAdminCredentialsInputChange(event) {
     const changedInputName = event.target.name
@@ -531,46 +602,36 @@ export function AdminAccessPanel({ articlePublicationController, onArticleCatalo
     }
   }
 
-  function handleDragStart(event, sourceIndex) {
-    dragSourceIndexRef.current = sourceIndex
-    event.dataTransfer.effectAllowed = 'move'
+  function handleSortableReorder(reorderedCatalog) {
+    currentSortOrderRef.current = reorderedCatalog
+    setSortableArticleCatalog(reorderedCatalog)
   }
 
-  function handleDragOver(event, overIndex) {
-    event.preventDefault()
-    event.dataTransfer.dropEffect = 'move'
-    setDragOverIndex(overIndex)
-  }
+  const handleItemDragStart = useCallback(function handleItemDragStart() {
+    preDragCatalogRef.current = [...currentSortOrderRef.current]
+  }, [])
 
-  function handleDragEnd() {
-    dragSourceIndexRef.current = null
-    setDragOverIndex(null)
-  }
+  const handleItemDragEnd = useCallback(function handleItemDragEnd() {
+    const previousCatalog = preDragCatalogRef.current
+    const nextCatalog = currentSortOrderRef.current
 
-  function handleDrop(event, destinationIndex) {
-    event.preventDefault()
-    const sourceIndex = dragSourceIndexRef.current
-    setDragOverIndex(null)
+    if (!previousCatalog) return
 
-    if (sourceIndex === null || sourceIndex === destinationIndex) {
-      dragSourceIndexRef.current = null
-      return
+    const hasOrderChanged = nextCatalog.some((article, index) => article.id !== previousCatalog[index].id)
+
+    if (hasOrderChanged) {
+      const reorderResult = articlePublicationController.applyArticleCatalogReorder(
+        nextCatalog,
+        'admin-article-drag-reorder-flow'
+      )
+      setArticleFeedbackMessage(reorderResult.publicMessage)
+      if (reorderResult.statusCode === 200) {
+        syncArticleCatalogState(reorderResult.articleCatalog)
+      }
     }
 
-    const articleReorderResult = articlePublicationController.reorderArticleByDragAndDrop(
-      sourceIndex,
-      destinationIndex,
-      'admin-article-drag-reorder-flow'
-    )
-
-    setArticleFeedbackMessage(articleReorderResult.publicMessage)
-
-    if (articleReorderResult.statusCode === 200) {
-      syncArticleCatalogState(articleReorderResult.articleCatalog)
-    }
-
-    dragSourceIndexRef.current = null
-  }
+    preDragCatalogRef.current = null
+  }, [])
 
   const adminSessionExpiresAtLabel = adminSessionState.sessionExpiresAtInSeconds
     ? new Date(adminSessionState.sessionExpiresAtInSeconds * 1000).toLocaleString('pt-BR')
@@ -715,95 +776,26 @@ export function AdminAccessPanel({ articlePublicationController, onArticleCatalo
               </p>
             ) : null}
 
-            <ul className="mt-6 grid gap-3" aria-label="Lista de artigos">
-              {adminArticleCatalog.map((articleData, articleIndex) => {
-                const sourceIndex = dragSourceIndexRef.current
-                const isDragActive = sourceIndex !== null
-                const isSource = sourceIndex === articleIndex
-                const showPlaceholderBefore =
-                  isDragActive && dragOverIndex === articleIndex && sourceIndex > articleIndex
-                const showPlaceholderAfter =
-                  isDragActive && dragOverIndex === articleIndex && sourceIndex < articleIndex
-
-                return (
-                  <Fragment key={articleData.id}>
-                    {showPlaceholderBefore && (
-                      <li
-                        aria-hidden="true"
-                        className="pointer-events-none h-20 animate-pulse rounded-xl border-4 border-dashed border-pastelMint bg-pastelMint/30"
-                      />
-                    )}
-                  <li
-                    draggable
-                    onDragStart={(event) => handleDragStart(event, articleIndex)}
-                    onDragOver={(event) => handleDragOver(event, articleIndex)}
-                    onDragEnd={handleDragEnd}
-                    onDrop={(event) => handleDrop(event, articleIndex)}
-                    className={[
-                      'cute-box cursor-grab bg-paperWhite p-4 transition-all duration-200 active:cursor-grabbing',
-                      isSource ? 'opacity-30 scale-95' : '',
-                    ].join(' ')}
-                  >
-                    <header className="flex flex-wrap items-center justify-between gap-3">
-                      <div className="flex items-center gap-3">
-                        <FaGripVertical
-                          className="shrink-0 text-inkBlack/30"
-                          aria-hidden="true"
-                          title="Arraste para reordenar"
-                        />
-                        <div>
-                          <h3 className="text-lg font-display text-inkBlack">{articleData.title}</h3>
-                          <p className="text-xs font-bold uppercase tracking-wider text-inkBlack/70">
-                            {articleData.subtitle}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {articleData.galleryImageUrls?.length > 0 && (
-                          <span className="rounded-lg border-2 border-inkBlack bg-pastelBlue px-2 py-1 text-xs font-black uppercase">
-                            {articleData.galleryImageUrls.length} foto
-                            {articleData.galleryImageUrls.length !== 1 ? 's' : ''}
-                          </span>
-                        )}
-                        <span className="rounded-lg border-2 border-inkBlack bg-pastelYellow px-2 py-1 text-xs font-black uppercase">
-                          {articleData.isPublished ? 'Publicado' : 'Oculto'}
-                        </span>
-                      </div>
-                    </header>
-                    <div className="mt-4 flex flex-wrap gap-2">
-                      <button
-                        type="button"
-                        className="cute-button flex h-10 items-center justify-center gap-1 bg-pastelYellow px-4 py-1 text-xs"
-                        onClick={() => handleEditArticleClick(articleData)}
-                      >
-                        <FaEdit aria-hidden="true" />
-                        <span>Editar</span>
-                      </button>
-                      <button
-                        type="button"
-                        className="cute-button h-10 bg-pastelMint px-4 py-1 text-xs"
-                        onClick={() => handleArticleVisibilityToggle(articleData.id)}
-                      >
-                        {articleData.isPublished ? 'Ocultar' : 'Publicar'}
-                      </button>
-                      <button
-                        type="button"
-                        className="cute-button flex h-10 items-center justify-center gap-1 bg-pastelPink px-4 py-1 text-xs"
-                        onClick={() => handleArticleDeletion(articleData.id)}
-                      >
-                        <FaTrash aria-hidden="true" />
-                        <span>Excluir</span>
-                      </button>
-                    </div>
-                  </li>                    {showPlaceholderAfter && (
-                      <li
-                        aria-hidden="true"
-                        className="pointer-events-none h-20 animate-pulse rounded-xl border-4 border-dashed border-pastelMint bg-pastelMint/30"
-                      />
-                    )}
-                  </Fragment>                )
-              })}
-            </ul>
+            <Reorder.Group
+              as="ul"
+              axis="y"
+              values={sortableArticleCatalog}
+              onReorder={handleSortableReorder}
+              className="mt-6 flex flex-col gap-3"
+              aria-label="Lista de artigos"
+            >
+              {sortableArticleCatalog.map((articleData) => (
+                <ArticleReorderItem
+                  key={articleData.id}
+                  articleData={articleData}
+                  onDragStart={handleItemDragStart}
+                  onDragEnd={handleItemDragEnd}
+                  onEdit={handleEditArticleClick}
+                  onToggleVisibility={handleArticleVisibilityToggle}
+                  onDelete={handleArticleDeletion}
+                />
+              ))}
+            </Reorder.Group>
           </article>
         </section>
       )}

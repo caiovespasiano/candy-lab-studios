@@ -241,16 +241,16 @@ function App() {
 
   return (
     <div className="w-full">
-      <header className="cute-box relative mx-auto w-full max-w-screen-xl overflow-hidden bg-pastelPink px-4 py-8 sm:px-8 lg:px-12 lg:py-12 mb-16">
+      <header className="cute-box relative mx-auto w-full max-w-7xl overflow-hidden bg-pastelPink px-4 py-8 sm:px-8 lg:px-12 lg:py-12 mb-16">
         <nav className="relative z-20 flex w-full flex-wrap items-center justify-center gap-6">
           <ul className="flex items-center gap-4 text-sm font-bold uppercase text-inkBlack sm:gap-6">
             <li><a href="#home" className="transition-transform hover:-translate-y-1">Início</a></li>
-            <li><a href="#portfolio" className="transition-transform hover:-translate-y-1">3D Assets</a></li>
-            <li><a href="#socialSectionHeading" className="transition-transform hover:-translate-y-1">Contato</a></li>
+            <li><a href="#assetsHeading" className="transition-transform hover:-translate-y-1">3D Assets</a></li>
+            <li><a href="#contatoHeading" className="transition-transform hover:-translate-y-1">Contato</a></li>
           </ul>
         </nav>
 
-        <section id="home" className="relative z-10 mx-auto max-w-screen-xl px-4 py-8 sm:px-8 lg:px-12 lg:py-16 flex flex-col items-center text-center">
+        <section id="home" className="relative z-10 mx-auto max-w-7xl px-4 py-8 sm:px-8 lg:px-12 lg:py-16 flex flex-col items-center text-center">
           <article className="space-y-16">         
             <div className="mx-auto flex items-center justify-center gap-4 text-sm font-bold uppercase text-inkBlack sm:gap-6">
               <h1 className="text-4xl font-display text-inkBlack drop-shadow-[2px_2px_0px_#ffffff] sm:text-5xl lg:text-6xl">
@@ -270,7 +270,7 @@ function App() {
           <article className="relative mx-auto mt-16 mb-8 w-full max-w-2xl px-6">
             {featuredProjectData ? (
              <div
-                className="cute-box relative mx-auto w-full aspect-[4/3] max-w-[600px] overflow-hidden bg-pastelBlue p-0 border-4 border-white shadow-xl cursor-pointer"
+                className="cute-box relative mx-auto w-full aspect-4/3 max-w-150 overflow-hidden bg-pastelBlue p-0 border-4 border-white shadow-xl cursor-pointer"
                 role="button"
                 tabIndex={0}
                 onClick={() => handleOpenProjectModal(featuredProjectData.id)}
@@ -296,7 +296,7 @@ function App() {
                 <button
                   type="button"
                   onClick={(event) => { event.stopPropagation(); handleOpenProjectModal(featuredProjectData.id) }}
-                  className="cute-button absolute right-5 top-5 flex h-14 w-14 items-center justify-center !p-0 !rounded-full bg-pastelPink text-xl border-2 border-white"
+                  className="cute-button absolute right-5 top-5 flex h-14 w-14 items-center justify-center p-0! rounded-full! bg-pastelPink text-xl border-2 border-white"
                   aria-label={`Abrir detalhes de destaque do projeto ${featuredProjectData.title}`}
                 ><span className="leading-none">+</span></button>
              </div>
@@ -312,13 +312,13 @@ function App() {
       </header>
 
       <main className="mt-16 space-y-16 sm:mt-12">
-        <div className="flex justify-center mb-12">
+        <div id="assetsHeading" className="flex justify-center mb-12">
           <div className="text-center bg-paperWhite cute-box inline-block px-10 py-6">
             <h2 id="portfolioSectionHeading" className="text-4xl sm:text-5xl font-display text-inkBlack drop-shadow-[2px_2px_0px_#ffffff]">3D Assets</h2>
             <p className="mt-3 text-sm font-black tracking-widest uppercase text-inkBlack/80">Projetos UGC em destaque</p>
           </div>
         </div>
-        <section id="portfolio" aria-labelledby="portfolioSectionHeading" className="cute-box mx-auto max-w-screen-xl px-4 py-8 sm:px-8 lg:px-12 lg:py-12 bg-pastelBlue mb-16 border-4 border-white">
+        <section id="portfolio" aria-labelledby="portfolioSectionHeading" className="cute-box mx-auto max-w-7xl px-4 py-8 sm:px-8 lg:px-12 lg:py-12 bg-pastelBlue mb-16 border-4 border-white">
           <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-3">
             {publishedArticleCatalog.map((projectData) => (
               <article key={projectData.id} className="group flex flex-col items-center">
@@ -328,14 +328,14 @@ function App() {
                   onClick={() => handleOpenProjectModal(projectData.id)}
                   aria-label={`Abrir detalhes do projeto ${projectData.title}`}
                 >
-                  <div className="cute-box relative h-56 w-full overflow-hidden bg-pastelPink shadow-none !p-0">
+                  <div className="cute-box relative h-56 w-full overflow-hidden bg-pastelPink shadow-none p-0!">
                     <img
                       src={projectData.imageUrl}
                       alt={projectData.imageAlternativeText}
                       className="h-full w-full object-cover filter saturate-150 transition-transform duration-500 group-hover:scale-110"
                       loading="lazy"
                     />
-                    <div className="cute-box absolute -right-2 top-4 flex h-14 w-14 items-center justify-center rounded-full bg-pastelYellow shadow-none text-sm font-black uppercase text-inkBlack -rotate-12 border-2 border-white !p-0">
+                    <div className="cute-box absolute -right-2 top-4 flex h-14 w-14 items-center justify-center rounded-full bg-pastelYellow shadow-none text-sm font-black uppercase text-inkBlack -rotate-12 border-2 border-white p-0!">
                       <span className="flex items-center gap-1">
                         {projectLikeCountByIdentifier[projectData.id]}
                         <FaHeart aria-hidden="true" />
@@ -358,13 +358,13 @@ function App() {
           </div>
         </section>
 
-        <div className="flex justify-center mb-12">
+        <div id="contatoHeading" className="flex justify-center mb-12">
           <div className="text-center bg-paperWhite cute-box inline-block px-10 py-6">
-            <h2 id="portfolioSectionHeading" className="text-4xl sm:text-5xl font-display text-inkBlack drop-shadow-[2px_2px_0px_#ffffff]">Contato</h2>
+            <h2 className="text-4xl sm:text-5xl font-display text-inkBlack drop-shadow-[2px_2px_0px_#ffffff]">Contato</h2>
           </div>
         </div>
 
-        <section aria-labelledby="socialSectionHeading" className="cute-box mx-auto grid max-w-screen-xl px-4 py-8 sm:px-8 lg:px-12 lg:py-12 gap-10 bg-pastelYellow lg:grid-cols-2">
+        <section aria-labelledby="socialSectionHeading" className="cute-box mx-auto grid max-w-7xl px-4 py-8 sm:px-8 lg:px-12 lg:py-12 gap-10 bg-pastelYellow lg:grid-cols-2">
           
           <article className="flex flex-col justify-center space-y-8">
             <div>
@@ -447,7 +447,7 @@ function App() {
       </main>
 
       <footer className="mt-16 flex flex-col items-center gap-4 pb-10">
-        <span className="cute-box mx-auto block w-full max-w-screen-xl px-4 py-2 text-center text-xs font-black uppercase tracking-wider shadow-none sm:px-8 lg:px-12">© 2026 Candy Lab Studios</span>
+        <span className="cute-box mx-auto block w-full max-w-7xl px-4 py-2 text-center text-xs font-black uppercase tracking-wider shadow-none sm:px-8 lg:px-12">© 2026 Candy Lab Studios</span>
         <a
           href={globalAdminAccessConfig.adminRouteHash}
           className="text-[10px] font-bold uppercase tracking-widest text-inkBlack/60 hover:text-inkBlack"
@@ -477,7 +477,7 @@ function App() {
             </button>
 
             <div className="relative flex w-full flex-col items-center justify-center gap-4 bg-white cute-box p-6">
-              <div className="relative w-full max-w-5xl aspect-[4/3] overflow-hidden bg-pastelBlue cute-box !p-0">
+              <div className="relative w-full max-w-5xl aspect-4/3 overflow-hidden bg-pastelBlue cute-box p-0!">
                   <img
                     src={selectedProjectData.galleryImageUrls[currentGalleryImageIndex]}
                     alt={selectedProjectData.imageAlternativeText}
@@ -537,7 +537,7 @@ function App() {
                   className={`cute-control-button flex h-12 w-12 items-center justify-center border-2 border-inkBlack text-2xl ${
                     hasSelectedProjectBeenLiked
                       ? 'bg-pastelPink hover:bg-[#f09490]'
-                      : '!bg-paperWhite hover:!bg-pastelBlue'
+                      : 'bg-paperWhite! hover:bg-pastelBlue!'
                   }`}
                   aria-label={hasSelectedProjectBeenLiked ? 'Remover curtida' : 'Curtir'}
                 >
