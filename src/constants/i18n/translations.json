@@ -1,0 +1,176 @@
+{
+  "ptBR": {
+    "nav": {
+      "home": "Início",
+      "assets": "3D Assets",
+      "contact": "Contato"
+    },
+    "hero": {
+      "badge": "Assets 3D para Roblox",
+      "description": "Produção de assets 3D e itens UGC para Roblox."
+    },
+    "featured": {
+      "openDetails": "Abrir detalhes de destaque do projeto {title}",
+      "openModal": "Abrir modal do projeto em destaque {title}",
+      "category": "UGC / Props",
+      "empty": "Nenhum artigo publicado no momento."
+    },
+    "assets": {
+      "title": "3D Assets",
+      "subtitle": "Projetos UGC em destaque",
+      "openDetails": "Abrir detalhes do projeto {title}",
+      "viewDetails": "Ver detalhes"
+    },
+    "contact": {
+      "sectionTitle": "Contato",
+      "socialHeading": "Pronto para o próximo asset 3D?",
+      "socialDescription": "Parcerias para criação de assets, itens UGC e direção visual para builds no Roblox.",
+      "formTitle": "Formulário",
+      "fullNameLabel": "Nome completo",
+      "fullNamePlaceholder": "Nome",
+      "emailLabel": "E-mail",
+      "emailPlaceholder": "contato@exemplo.com",
+      "detailsLabel": "Detalhes",
+      "detailsPlaceholder": "Texto da mensagem",
+      "submit": "Enviar",
+      "successMessage": "Mensagem recebida com sucesso de {fullName}.",
+      "errorMessage": "Não foi possível enviar sua mensagem agora."
+    },
+    "footer": {
+      "privateAccess": "Acesso privado",
+      "privateAccessAria": "Acessar painel administrativo privado"
+    },
+    "modal": {
+      "sectionLabel": "Detalhes do projeto",
+      "close": "Fechar modal",
+      "previousImage": "Imagem anterior",
+      "nextImage": "Próxima imagem",
+      "goToImage": "Ir para a imagem {index}",
+      "share": "Compartilhar",
+      "copied": "Link do projeto copiado para compartilhar!",
+      "like": "Curtir",
+      "removeLike": "Remover curtida",
+      "likes": "Curtidas: {count}",
+      "zoomImage": "Ampliar imagem"
+    },
+    "language": {
+      "switcherLabel": "Selecionar idioma"
+    }
+  },
+  "en": {
+    "nav": {
+      "home": "Home",
+      "assets": "3D Assets",
+      "contact": "Contact"
+    },
+    "hero": {
+      "badge": "3D Assets for Roblox",
+      "description": "Production of 3D assets and UGC items for Roblox."
+    },
+    "featured": {
+      "openDetails": "Open featured project details for {title}",
+      "openModal": "Open featured project modal for {title}",
+      "category": "UGC / Props",
+      "empty": "No published articles at the moment."
+    },
+    "assets": {
+      "title": "3D Assets",
+      "subtitle": "Featured UGC projects",
+      "openDetails": "Open details for project {title}",
+      "viewDetails": "View details"
+    },
+    "contact": {
+      "sectionTitle": "Contact",
+      "socialHeading": "Ready for the next 3D asset?",
+      "socialDescription": "Partnerships for creating assets, UGC items, and visual direction for Roblox builds.",
+      "formTitle": "Contact Form",
+      "fullNameLabel": "Full Name",
+      "fullNamePlaceholder": "Name",
+      "emailLabel": "Email",
+      "emailPlaceholder": "contact@example.com",
+      "detailsLabel": "Details",
+      "detailsPlaceholder": "Message text",
+      "submit": "Send",
+      "successMessage": "Message received successfully from {fullName}.",
+      "errorMessage": "Could not send your message right now."
+    },
+    "footer": {
+      "privateAccess": "Private access",
+      "privateAccessAria": "Access private admin panel"
+    },
+    "modal": {
+      "sectionLabel": "Project details",
+      "close": "Close modal",
+      "previousImage": "Previous image",
+      "nextImage": "Next image",
+      "goToImage": "Go to image {index}",
+      "share": "Share",
+      "copied": "Project link copied for sharing!",
+      "like": "Like",
+      "removeLike": "Remove like",
+      "likes": "Likes: {count}",
+      "zoomImage": "Zoom image"
+    },
+    "language": {
+      "switcherLabel": "Select language"
+    }
+  },
+  "es": {
+    "nav": {
+      "home": "Inicio",
+      "assets": "Assets 3D",
+      "contact": "Contacto"
+    },
+    "hero": {
+      "badge": "Assets 3D para Roblox",
+      "description": "Producción de assets 3D e ítems UGC para Roblox."
+    },
+    "featured": {
+      "openDetails": "Abrir detalles del proyecto destacado {title}",
+      "openModal": "Abrir modal del proyecto destacado {title}",
+      "category": "UGC / Props",
+      "empty": "No hay artículos publicados en este momento."
+    },
+    "assets": {
+      "title": "Assets 3D",
+      "subtitle": "Proyectos UGC destacados",
+      "openDetails": "Abrir detalles del proyecto {title}",
+      "viewDetails": "Ver detalles"
+    },
+    "contact": {
+      "sectionTitle": "Contacto",
+      "socialHeading": "¿Listo para el próximo asset 3D?",
+      "socialDescription": "Colaboraciones para crear assets, ítems UGC y dirección visual para builds en Roblox.",
+      "formTitle": "Formulario",
+      "fullNameLabel": "Nombre completo",
+      "fullNamePlaceholder": "Nombre",
+      "emailLabel": "Correo",
+      "emailPlaceholder": "contacto@ejemplo.com",
+      "detailsLabel": "Detalles",
+      "detailsPlaceholder": "Texto del mensaje",
+      "submit": "Enviar",
+      "successMessage": "Mensaje recibido con éxito de {fullName}.",
+      "errorMessage": "No se pudo enviar tu mensaje ahora."
+    },
+    "footer": {
+      "privateAccess": "Acceso privado",
+      "privateAccessAria": "Acceder al panel administrativo privado"
+    },
+    "modal": {
+      "sectionLabel": "Detalles del proyecto",
+      "close": "Cerrar modal",
+      "previousImage": "Imagen anterior",
+      "nextImage": "Siguiente imagen",
+      "goToImage": "Ir a la imagen {index}",
+      "share": "Compartir",
+      "copied": "¡Enlace del proyecto copiado para compartir!",
+      "like": "Me gusta",
+      "removeLike": "Quitar me gusta",
+      "likes": "Me gusta: {count}",
+      "zoomImage": "Ampliar imagen"
+    },
+    "language": {
+      "switcherLabel": "Seleccionar idioma"
+    }
+  }
+}

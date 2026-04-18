@@ -29,7 +29,12 @@ export async function requestAdminAuthenticationUsingGateway(
     const normalizedStatusCode = Number(gatewayResponse.statusCode)
 
     if (normalizedStatusCode >= 400) {
-      return mapHttpStatusToSanitizedErrorResponse(normalizedStatusCode, correlationIdentifier)
+      const baseErrorResponse = mapHttpStatusToSanitizedErrorResponse(normalizedStatusCode, correlationIdentifier)
+
+      return {
+        ...baseErrorResponse,
+        publicMessage: gatewayResponse.payload?.message || baseErrorResponse.publicMessage,
+      }
     }
 
     return {

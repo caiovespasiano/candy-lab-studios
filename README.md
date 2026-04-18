@@ -1,17 +1,82 @@
-# React + Vite
+# Candy Lab Studios
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Landing page de portfolio para assets 3D e itens UGC Roblox, com painel administrativo privado.
 
-Currently, two official plugins are available:
+## Stack
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- React 19
+- Vite 8
+- Tailwind CSS 4
+- JavaScript (ES Modules)
+- Vitest + Testing Library
 
-## React Compiler
+## Funcionalidades
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- Hero section com identidade da marca e proposta de valor
+- Galeria responsiva com modal, carrossel de imagens e sistema de curtidas por sessao
+- Destaque de projeto em card especial
+- Secao social com Discord e formulario de contato sanitizado
+- Footer institucional
+- Painel admin protegido com autenticacao em duas etapas (usuario, senha e codigo de verificacao)
+- Gerenciamento de artigos: criar, editar, publicar, ocultar, reordenar por drag-and-drop e excluir
+- Galeria de imagens por artigo gerenciada pelo admin
+- Personalizacao da cor de fundo global da landing persistida em localStorage
 
-## Expanding the ESLint configuration
+## Seguranca
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
-# candy-lab-studios
+- Sanitizacao total de entradas e prevencao de XSS
+- Tokens de sessao com expiracao
+- Headers de seguranca configurados para deploy (Netlify `_headers`)
+- CSP aplicada apenas no ambiente de preview/producao
+
+## Desenvolvimento
+
+```bash
+npm install
+npm run dev
+```
+
+### API de Persistencia no Projeto
+
+- Em desenvolvimento (`npm run dev`), a API local de persistencia e servida pelo middleware do Vite.
+- Em producao, a API local e servida por um backend Node dedicado.
+
+## Producao Local
+
+```bash
+npm run build
+npm run start
+```
+
+Servidor de producao:
+
+- Frontend: `dist/`
+- API: `/api/admin/articles` e `/api/admin/upload-image`
+- Uploads: `public/uploads/`
+
+## Testes
+
+```bash
+npm test
+```
+
+## Branches
+
+- `candylabstudios` — branch de trabalho principal
+- `develop` — integracao
+- `master` — producao
+
+## Estrutura
+
+```
+src/
+  components/       Componentes React (AdminAccessPanel)
+  constants/        Catalogos e configuracoes globais
+  controllers/      Logica de dominio (artigos)
+  models/           Entidades e validacoes
+  network/          Mapeamento de erros HTTP
+  repositories/     Persistencia em localStorage
+  security/         Sanitizacao de texto
+  services/         Servicos de autenticacao, sessao e preferencias
+  tests/            Testes unitarios
+```

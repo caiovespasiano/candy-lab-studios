@@ -77,6 +77,21 @@ describe('GlobalArticlePublicationController', () => {
     expect(reorderResult.articleCatalog[0].id).toBe(articleIdentifierAtSourceIndex)
   })
 
+  test('whenApplyArticleCatalogReorderReceivesSortedCatalogThenPersistsNewOrder', () => {
+    const storageClient = createInMemoryStorageClient()
+    const controller = new GlobalArticlePublicationController({ storageClient })
+    const initialCatalog = controller.listAllArticleCatalog().articleCatalog
+    const reversedCatalog = [...initialCatalog].reverse()
+
+    const reorderResult = controller.applyArticleCatalogReorder(reversedCatalog, 'correlation-apply-reorder')
+
+    expect(reorderResult.statusCode).toBe(200)
+    expect(reorderResult.articleCatalog[0].id).toBe(reversedCatalog[0].id)
+    expect(reorderResult.articleCatalog[reorderResult.articleCatalog.length - 1].id).toBe(
+      reversedCatalog[reversedCatalog.length - 1].id
+    )
+  })
+
   test('whenUpdateArticleReceivesValidPayloadThenReturnsUpdatedArticle', () => {
     const storageClient = createInMemoryStorageClient()
     const controller = new GlobalArticlePublicationController({ storageClient })
