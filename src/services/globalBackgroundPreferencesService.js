@@ -1,10 +1,35 @@
 import { globalAdminAccessConfig } from '../constants/globalAdminAccessConfig'
+import { internalRuntimeStorage } from './internalRuntimeStorageService'
 
 const globalHexColorPattern = /^#[0-9a-fA-F]{6}$/
 const globalFallbackBackgroundColor = '#ffffff'
 
+function resolveBrowserLocalStorage() {
+  if (typeof window === 'undefined' || !window.localStorage) {
+    return null
+  }
+
+  try {
+    const testStorageKey = '__dimi3d-background-storage-check__'
+    window.localStorage.setItem(testStorageKey, 'ok')
+    window.localStorage.removeItem(testStorageKey)
+    return window.localStorage
+  } catch {
+    return null
+  }
+}
+
 function resolveStorage(storageClient) {
-  return storageClient ?? window.localStorage
+  if (storageClient) {
+    return storageClient
+  }
+
+  const browserLocalStorage = resolveBrowserLocalStorage()
+  if (browserLocalStorage) {
+    return browserLocalStorage
+  }
+
+  return internalRuntimeStorage
 }
 
 function isValidHexColor(hexColorValue) {

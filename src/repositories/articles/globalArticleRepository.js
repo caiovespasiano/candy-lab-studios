@@ -1,9 +1,34 @@
 import { globalAdminAccessConfig } from '../../constants/globalAdminAccessConfig'
 import { globalPortfolioProjectCatalog } from '../../constants/globalPortfolioCatalog'
 import { createArticleEntity } from '../../models/articles/globalArticleModel'
+import { internalRuntimeStorage } from '../../services/internalRuntimeStorageService'
+
+function resolveBrowserLocalStorage() {
+  if (typeof window === 'undefined' || !window.localStorage) {
+    return null
+  }
+
+  try {
+    const testStorageKey = '__dimi3d-storage-check__'
+    window.localStorage.setItem(testStorageKey, 'ok')
+    window.localStorage.removeItem(testStorageKey)
+    return window.localStorage
+  } catch {
+    return null
+  }
+}
 
 function resolveStorageClient(storageClient) {
-  return storageClient ?? window.localStorage
+  if (storageClient) {
+    return storageClient
+  }
+
+  const browserLocalStorage = resolveBrowserLocalStorage()
+  if (browserLocalStorage) {
+    return browserLocalStorage
+  }
+
+  return internalRuntimeStorage
 }
 
 function sortArticleCatalogByOrder(articleCatalog) {
@@ -36,7 +61,7 @@ export function loadPersistedArticleCatalog(storageClient, nowTimestampProvider 
     })
 
     return sortArticleCatalogByOrder(normalizedArticleCatalog)
-  } catch (unknownError) {
+  } catch {
     return normalizeSeedArticleCatalog(globalPortfolioProjectCatalog, nowTimestampProvider)
   }
 }

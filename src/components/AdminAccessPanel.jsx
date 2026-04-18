@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from 'react'
-import { FaArrowLeft, FaEdit, FaGripVertical, FaLock, FaPlus, FaSignOutAlt, FaTrash } from 'react-icons/fa'
-import { globalAdminAccessConfig } from '../constants/globalAdminAccessConfig'
+import { memo, useCallback, useEffect, useRef, useState } from 'react'
+import { Reorder } from 'framer-motion'
+import { FaArrowLeft, FaEdit, FaGripVertical, FaLock, FaPlus, FaSignOutAlt, FaTrash, FaUpload } from 'react-icons/fa'
 import { requestAdminAuthenticationUsingGateway } from '../services/adminAuthenticationService'
 import {
   clearPersistedAdminSessionToken,
@@ -12,56 +12,43 @@ import {
   loadPersistedGlobalBackgroundHexColor,
   persistGlobalBackgroundHexColor,
 } from '../services/globalBackgroundPreferencesService'
+import {
+  loadPersistedArticleCatalogFromProject,
+  persistArticleCatalogToProject,
+  uploadArticleImageToProject,
+} from '../services/projectPersistenceGatewayService'
 
 const globalDefaultAdminAuthenticationGatewayClient = {
   async requestAdminAuthentication(sanitizedAdminCredentials) {
-    const expectedUsername = import.meta.env.VITE_ADMIN_USERNAME || globalAdminAccessConfig.defaultAdminUsername
-    const expectedPassword = import.meta.env.VITE_ADMIN_PASSWORD || globalAdminAccessConfig.defaultAdminPassword
-    const expectedVerificationCode =
-      import.meta.env.VITE_ADMIN_VERIFICATION_CODE || globalAdminAccessConfig.defaultAdminVerificationCode
-    const hasInvalidCredentials =
-      sanitizedAdminCredentials.username !== expectedUsername ||
-      sanitizedAdminCredentials.password !== expectedPassword ||
-      sanitizedAdminCredentials.verificationCode !== expectedVerificationCode
+    const authenticationResponse = await fetch('/api/admin/authenticate', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      },
+      credentials: 'include',
+      body: JSON.stringify(sanitizedAdminCredentials),
+    })
 
-    if (hasInvalidCredentials) {
-      return {
-        statusCode: 401,
-        payload: { message: 'Falha na autenticação administrativa.' },
-      }
-    }
-
-    const { createAdminSessionToken, parseAndValidateAdminSessionToken } = await import('../services/adminSessionTokenService')
-    const sessionToken = createAdminSessionToken({ username: sanitizedAdminCredentials.username })
-    const sessionValidationResult = parseAndValidateAdminSessionToken(sessionToken)
+    const authenticationPayload = await authenticationResponse.json().catch(() => ({}))
 
     return {
-      statusCode: 200,
+      statusCode: Number(authenticationPayload.statusCode || authenticationResponse.status || 500),
       payload: {
-        message: 'Acesso administrativo autorizado.',
-        sessionToken,
-        sessionExpiresAtInSeconds: sessionValidationResult.sessionData.expiresAtInSeconds,
-        username: sanitizedAdminCredentials.username,
+        message: String(authenticationPayload.message || 'Falha na autenticação administrativa.'),
+        sessionToken: authenticationPayload.sessionToken,
+        sessionExpiresAtInSeconds: authenticationPayload.sessionExpiresAtInSeconds,
+        username: authenticationPayload.username,
       },
     }
   },
 }
 
-function resolveInitialAdminSessionState() {
-  const restoredAdminSession = restoreValidAdminSessionData()
-
-  if (!restoredAdminSession.isAuthenticated) {
-    return {
-      isAuthenticated: false,
-      username: '',
-      sessionExpiresAtInSeconds: null,
-    }
-  }
-
+function resolveEmptyAdminSessionState() {
   return {
-    isAuthenticated: true,
-    username: restoredAdminSession.sessionData.username,
-    sessionExpiresAtInSeconds: restoredAdminSession.sessionData.expiresAtInSeconds,
+    isAuthenticated: false,
+    username: '',
+    sessionExpiresAtInSeconds: null,
   }
 }
 
@@ -73,8 +60,53 @@ const globalEmptyArticleFormState = {
   imageAlternativeText: '',
 }
 
-function GalleryUrlEditor({ galleryImageUrlDraftCatalog, onGalleryUrlDraftCatalogChange }) {
+const globalAllowedImageMimeTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/avif']
+const globalMaxUploadFileSizeInBytes = 10 * 1024 * 1024
+const globalProjectPersistenceFallbackMessage =
+  'API local indisponível: alterações salvas apenas no armazenamento do navegador.'
+
+function convertImageFileToWebpDataUrl(imageFile) {
+  return new Promise((resolve, reject) => {
+    const objectUrl = URL.createObjectURL(imageFile)
+    const imageElement = new Image()
+
+    imageElement.onload = () => {
+      const canvasElement = document.createElement('canvas')
+      canvasElement.width = imageElement.naturalWidth
+      canvasElement.height = imageElement.naturalHeight
+      const canvasContext = canvasElement.getContext('2d')
+      canvasContext.drawImage(imageElement, 0, 0)
+      URL.revokeObjectURL(objectUrl)
+      canvasElement.toBlob(
+        (blobResult) => {
+          if (!blobResult) {
+            reject(new Error('Conversão para WebP falhou.'))
+            return
+          }
+          const fileReader = new FileReader()
+          fileReader.onload = () => resolve(fileReader.result)
+          fileReader.onerror = () => reject(new Error('Leitura do arquivo falhou.'))
+          fileReader.readAsDataURL(blobResult)
+        },
+        'image/webp',
+        0.92
+      )
+    }
+
+    imageElement.onerror = () => {
+      URL.revokeObjectURL(objectUrl)
+      reject(new Error('Carregamento da imagem falhou.'))
+    }
+
+    imageElement.src = objectUrl
+  })
+}
+
+function GalleryUrlEditor({ galleryImageUrlDraftCatalog, onGalleryUrlDraftCatalogChange, onImageUpload }) {
   const [galleryUrlInputValue, setGalleryUrlInputValue] = useState('')
+  const [uploadConversionError, setUploadConversionError] = useState('')
+  const [isConvertingUpload, setIsConvertingUpload] = useState(false)
+  const fileInputRef = useRef(null)
 
   function handleAddGalleryUrlClick() {
     const trimmedUrl = galleryUrlInputValue.trim()
@@ -94,8 +126,38 @@ function GalleryUrlEditor({ galleryImageUrlDraftCatalog, onGalleryUrlDraftCatalo
     }
   }
 
+  async function handleGalleryImageFileChange(event) {
+    const selectedFile = event.target.files?.[0]
+    event.target.value = ''
+
+    if (!selectedFile) return
+
+    if (!globalAllowedImageMimeTypes.includes(selectedFile.type)) {
+      setUploadConversionError('Formato não suportado. Use JPG, PNG, GIF, WebP ou AVIF.')
+      return
+    }
+
+    if (selectedFile.size > globalMaxUploadFileSizeInBytes) {
+      setUploadConversionError('Arquivo muito grande. Limite: 10 MB.')
+      return
+    }
+
+    setUploadConversionError('')
+    setIsConvertingUpload(true)
+
+    try {
+      const webpDataUrl = await convertImageFileToWebpDataUrl(selectedFile)
+      const persistedImageUrl = await onImageUpload(webpDataUrl, selectedFile.name || 'gallery-image')
+      onGalleryUrlDraftCatalogChange([...galleryImageUrlDraftCatalog, persistedImageUrl])
+    } catch {
+      setUploadConversionError('Não foi possível enviar a imagem para a pasta do projeto.')
+    } finally {
+      setIsConvertingUpload(false)
+    }
+  }
+
   return (
-    <div>
+    <div className="w-full min-w-0">
       <span className="block text-xs font-black uppercase tracking-wider text-inkBlack">Galeria de imagens</span>
       <div className="mt-2 flex gap-2">
         <input
@@ -109,30 +171,57 @@ function GalleryUrlEditor({ galleryImageUrlDraftCatalog, onGalleryUrlDraftCatalo
         <button
           type="button"
           onClick={handleAddGalleryUrlClick}
-          className="cute-button flex h-12 w-12 items-center justify-center bg-pastelMint p-0!"
+          className="cute-button flex h-12 w-12 shrink-0 items-center justify-center bg-pastelMint p-0!"
           aria-label="Adicionar URL à galeria"
         >
           <FaPlus aria-hidden="true" />
         </button>
+        <button
+          type="button"
+          onClick={() => fileInputRef.current?.click()}
+          disabled={isConvertingUpload}
+          className="cute-button flex h-12 w-12 shrink-0 items-center justify-center bg-pastelBlue p-0! text-base disabled:opacity-60"
+          aria-label="Fazer upload de imagem"
+          title="Upload (converte para WebP)"
+        >
+          {isConvertingUpload ? (
+            <span className="text-xs font-black">...</span>
+          ) : (
+            <FaUpload aria-hidden="true" />
+          )}
+        </button>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={handleGalleryImageFileChange}
+          aria-label="Selecionar imagem para upload"
+        />
       </div>
+      {uploadConversionError && (
+        <p className="mt-1 text-xs font-black text-red-700" role="alert">{uploadConversionError}</p>
+      )}
       {galleryImageUrlDraftCatalog.length > 0 && (
         <ul className="mt-3 grid gap-2">
           {galleryImageUrlDraftCatalog.map((galleryUrl, urlIndex) => (
             <li
-              key={`${urlIndex}-${galleryUrl}`}
-              className="flex items-center gap-2 rounded-xl border-2 border-inkBlack bg-paperWhite px-3 py-2"
+              key={`${urlIndex}-${galleryUrl.slice(0, 40)}`}
+              className="flex min-w-0 overflow-hidden items-center gap-2 rounded-xl border-2 border-inkBlack bg-paperWhite px-3 py-2"
             >
               <img
                 src={galleryUrl}
                 alt={`Pré-visualização ${urlIndex + 1}`}
-                className="h-10 w-14 rounded-lg border border-inkBlack/20 object-cover"
+                className="h-10 w-14 shrink-0 rounded-lg border border-inkBlack/20 object-cover"
                 loading="lazy"
               />
-              <span className="flex-1 truncate text-xs font-bold text-inkBlack/70">{galleryUrl}</span>
+              <span className="flex-1 truncate text-xs font-bold text-inkBlack/70">
+                {galleryUrl.startsWith('data:') ? `[upload ${urlIndex + 1}]` : galleryUrl}
+              </span>
               <button
                 type="button"
                 onClick={() => handleRemoveGalleryUrlAtIndex(urlIndex)}
-                className="cute-control-button h-8 w-8 text-sm cute-control-button-close"
+                className="cute-control-button cute-control-button-close h-8 w-8 shrink-0 text-sm"
                 aria-label={`Remover imagem ${urlIndex + 1} da galeria`}
               >
                 ×
@@ -152,9 +241,49 @@ function ArticleFormFields({
   onGalleryUrlDraftCatalogChange,
   submitLabel,
   onCancelClick,
+  onImageUpload,
 }) {
+  const [mainImageUploadConversionError, setMainImageUploadConversionError] = useState('')
+  const [isMainImageUploadConverting, setIsMainImageUploadConverting] = useState(false)
+  const mainImageFileInputRef = useRef(null)
+
+  async function handleMainImageFileChange(event) {
+    const selectedFile = event.target.files?.[0]
+    event.target.value = ''
+
+    if (!selectedFile) return
+
+    if (!globalAllowedImageMimeTypes.includes(selectedFile.type)) {
+      setMainImageUploadConversionError('Formato não suportado. Use JPG, PNG, GIF, WebP ou AVIF.')
+      return
+    }
+
+    if (selectedFile.size > globalMaxUploadFileSizeInBytes) {
+      setMainImageUploadConversionError('Arquivo muito grande. Limite: 10 MB.')
+      return
+    }
+
+    setMainImageUploadConversionError('')
+    setIsMainImageUploadConverting(true)
+
+    try {
+      const webpDataUrl = await convertImageFileToWebpDataUrl(selectedFile)
+      const persistedImageUrl = await onImageUpload(webpDataUrl, selectedFile.name || 'main-image')
+      onInputChange({
+        target: {
+          name: 'imageUrl',
+          value: persistedImageUrl,
+        },
+      })
+    } catch {
+      setMainImageUploadConversionError('Não foi possível enviar a imagem principal para a pasta do projeto.')
+    } finally {
+      setIsMainImageUploadConverting(false)
+    }
+  }
+
   return (
-    <div className="grid gap-4">
+    <div className="grid min-w-0 gap-4">
       <label className="text-xs font-black uppercase tracking-wider text-inkBlack">
         Título
         <input
@@ -179,14 +308,42 @@ function ArticleFormFields({
       </label>
       <label className="text-xs font-black uppercase tracking-wider text-inkBlack">
         URL da imagem principal
-        <input
-          className="cute-input mt-2 w-full"
-          name="imageUrl"
-          type="url"
-          value={formState.imageUrl}
-          onChange={onInputChange}
-          required
-        />
+        <div className="mt-2 flex gap-2">
+          <input
+            className="cute-input w-full"
+            name="imageUrl"
+            type="url"
+            value={formState.imageUrl}
+            onChange={onInputChange}
+            required
+            placeholder="https://exemplo.com/imagem.jpg ou upload"
+          />
+          <button
+            type="button"
+            onClick={() => mainImageFileInputRef.current?.click()}
+            disabled={isMainImageUploadConverting}
+            className="cute-button flex h-12 w-12 shrink-0 items-center justify-center bg-pastelBlue p-0! text-base disabled:opacity-60"
+            aria-label="Fazer upload da imagem principal"
+            title="Upload da imagem principal (converte para WebP)"
+          >
+            {isMainImageUploadConverting ? (
+              <span className="text-xs font-black">...</span>
+            ) : (
+              <FaUpload aria-hidden="true" />
+            )}
+          </button>
+          <input
+            ref={mainImageFileInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={handleMainImageFileChange}
+            aria-label="Selecionar imagem principal para upload"
+          />
+        </div>
+        {mainImageUploadConversionError && (
+          <p className="mt-1 text-xs font-black text-red-700" role="alert">{mainImageUploadConversionError}</p>
+        )}
       </label>
       <label className="text-xs font-black uppercase tracking-wider text-inkBlack">
         Texto alternativo da imagem
@@ -212,8 +369,9 @@ function ArticleFormFields({
       <GalleryUrlEditor
         galleryImageUrlDraftCatalog={galleryUrlDraftCatalog}
         onGalleryUrlDraftCatalogChange={onGalleryUrlDraftCatalogChange}
+        onImageUpload={onImageUpload}
       />
-      <div className="flex gap-3 pt-1">
+      <div className="flex min-w-0 gap-3 pt-1">
         <button type="submit" className="cute-button flex flex-1 items-center justify-center gap-2 bg-pastelMint">
           <FaPlus aria-hidden="true" />
           <span>{submitLabel}</span>
@@ -232,18 +390,80 @@ function ArticleFormFields({
   )
 }
 
+const ArticleReorderItem = memo(function ArticleReorderItem({ articleData, onDragStart, onDragEnd, onEdit, onToggleVisibility, onDelete }) {
+  return (
+    <Reorder.Item
+      value={articleData}
+      onDragStart={onDragStart}
+      onDragEnd={onDragEnd}
+      dragMomentum={false}
+      className="relative list-none rounded-xl border-4 border-inkBlack bg-paperWhite shadow-[6px_6px_0px_0px_#111111] cursor-grab p-4 active:cursor-grabbing"
+    >
+      <header className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <FaGripVertical
+            className="shrink-0 text-inkBlack/30"
+            aria-hidden="true"
+            title="Arraste para reordenar"
+          />
+          <div>
+            <h3 className="text-lg font-display text-inkBlack">{articleData.title}</h3>
+            <p className="text-xs font-bold uppercase tracking-wider text-inkBlack/70">
+              {articleData.subtitle}
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          {articleData.galleryImageUrls?.length > 0 && (
+            <span className="rounded-lg border-2 border-inkBlack bg-pastelBlue px-2 py-1 text-xs font-black uppercase">
+              {articleData.galleryImageUrls.length} foto
+              {articleData.galleryImageUrls.length !== 1 ? 's' : ''}
+            </span>
+          )}
+          <span className="rounded-lg border-2 border-inkBlack bg-pastelYellow px-2 py-1 text-xs font-black uppercase">
+            {articleData.isPublished ? 'Publicado' : 'Oculto'}
+          </span>
+        </div>
+      </header>
+      <div className="mt-4 flex flex-wrap gap-2">
+        <button
+          type="button"
+          className="cute-button flex h-10 items-center justify-center gap-1 bg-pastelYellow px-4 py-1 text-xs"
+          onClick={() => onEdit(articleData)}
+        >
+          <FaEdit aria-hidden="true" />
+          <span>Editar</span>
+        </button>
+        <button
+          type="button"
+          className="cute-button h-10 bg-pastelMint px-4 py-1 text-xs"
+          onClick={() => onToggleVisibility(articleData.id)}
+        >
+          {articleData.isPublished ? 'Ocultar' : 'Publicar'}
+        </button>
+        <button
+          type="button"
+          className="cute-button flex h-10 items-center justify-center gap-1 bg-pastelPink px-4 py-1 text-xs"
+          onClick={() => onDelete(articleData.id)}
+        >
+          <FaTrash aria-hidden="true" />
+          <span>Excluir</span>
+        </button>
+      </div>
+    </Reorder.Item>
+  )
+})
+
 export function AdminAccessPanel({ articlePublicationController, onArticleCatalogChange, onNavigateBackToLanding }) {
   const [adminCredentialsFormState, setAdminCredentialsFormState] = useState({
     username: '',
     password: '',
     verificationCode: '',
   })
-  const [adminSessionState, setAdminSessionState] = useState(resolveInitialAdminSessionState)
+  const [adminSessionState, setAdminSessionState] = useState(resolveEmptyAdminSessionState)
   const [adminFeedbackMessage, setAdminFeedbackMessage] = useState('')
   const [articleFeedbackMessage, setArticleFeedbackMessage] = useState('')
-  const [adminArticleCatalog, setAdminArticleCatalog] = useState(() => {
-    return articlePublicationController.listAllArticleCatalog().articleCatalog
-  })
+  const initialAdminArticleCatalog = articlePublicationController.listAllArticleCatalog().articleCatalog
   const [articleCreationFormState, setArticleCreationFormState] = useState(globalEmptyArticleFormState)
   const [creationGalleryUrlDraftCatalog, setCreationGalleryUrlDraftCatalog] = useState([])
   const [editingArticleIdentifier, setEditingArticleIdentifier] = useState(null)
@@ -252,16 +472,95 @@ export function AdminAccessPanel({ articlePublicationController, onArticleCatalo
   const [globalBackgroundHexColor, setGlobalBackgroundHexColor] = useState(() => {
     return loadPersistedGlobalBackgroundHexColor()
   })
-  const dragSourceIndexRef = useRef(null)
+  const [sortableArticleCatalog, setSortableArticleCatalog] = useState(initialAdminArticleCatalog)
+  const currentSortOrderRef = useRef(initialAdminArticleCatalog)
+  const preDragCatalogRef = useRef(null)
+  const [isArticleModalOpen, setIsArticleModalOpen] = useState(false)
+
+  const handleImageUploadToProject = useCallback(async (imageDataUrl, sourceLabel) => {
+    try {
+      const uploadResponse = await uploadArticleImageToProject({ imageDataUrl, sourceLabel })
+      return String(uploadResponse.imageUrl || imageDataUrl)
+    } catch {
+      setArticleFeedbackMessage(globalProjectPersistenceFallbackMessage)
+      return imageDataUrl
+    }
+  }, [])
+
+  const syncArticleCatalogState = useCallback((nextArticleCatalog) => {
+    setSortableArticleCatalog(nextArticleCatalog)
+    currentSortOrderRef.current = nextArticleCatalog
+    onArticleCatalogChange(nextArticleCatalog)
+  }, [onArticleCatalogChange])
+
+  const persistArticleCatalogToProjectAndSyncStorage = useCallback(async (articleCatalog) => {
+    const persistResponse = await persistArticleCatalogToProject(articleCatalog)
+    const persistedCatalog = Array.isArray(persistResponse.articleCatalog)
+      ? persistResponse.articleCatalog
+      : articleCatalog
+
+    const reorderResult = articlePublicationController.applyArticleCatalogReorder(
+      persistedCatalog,
+      'admin-project-catalog-sync-flow'
+    )
+
+    syncArticleCatalogState(reorderResult.articleCatalog)
+    return reorderResult
+  }, [articlePublicationController, syncArticleCatalogState])
+
+  useEffect(() => {
+    async function restoreAdminSessionFromStorage() {
+      const restoredAdminSession = await restoreValidAdminSessionData()
+      if (restoredAdminSession.isAuthenticated) {
+        setAdminSessionState({
+          isAuthenticated: true,
+          username: restoredAdminSession.sessionData.username,
+          sessionExpiresAtInSeconds: restoredAdminSession.sessionData.expiresAtInSeconds,
+        })
+      }
+    }
+    restoreAdminSessionFromStorage()
+  }, [])
 
   useEffect(() => {
     applyGlobalBackgroundHexColor(globalBackgroundHexColor)
   }, [globalBackgroundHexColor])
 
   useEffect(() => {
-    const articleCatalogLoadResult = articlePublicationController.listAllArticleCatalog()
-    setAdminArticleCatalog(articleCatalogLoadResult.articleCatalog)
-  }, [articlePublicationController])
+    let isSubscriptionActive = true
+
+    async function restoreProjectCatalogFromDisk() {
+      try {
+        const projectCatalogResponse = await loadPersistedArticleCatalogFromProject()
+        if (!Array.isArray(projectCatalogResponse.articleCatalog)) {
+          return
+        }
+
+        const reorderResult = articlePublicationController.applyArticleCatalogReorder(
+          projectCatalogResponse.articleCatalog,
+          'admin-project-catalog-bootstrap-flow'
+        )
+
+        if (!isSubscriptionActive) {
+          return
+        }
+
+        syncArticleCatalogState(reorderResult.articleCatalog)
+      } catch {
+        if (isSubscriptionActive) {
+          const fallbackCatalog = articlePublicationController.listAllArticleCatalog().articleCatalog
+          syncArticleCatalogState(fallbackCatalog)
+          setArticleFeedbackMessage(globalProjectPersistenceFallbackMessage)
+        }
+      }
+    }
+
+    restoreProjectCatalogFromDisk()
+
+    return () => {
+      isSubscriptionActive = false
+    }
+  }, [articlePublicationController, syncArticleCatalogState])
 
   function handleAdminCredentialsInputChange(event) {
     const changedInputName = event.target.name
@@ -299,8 +598,8 @@ export function AdminAccessPanel({ articlePublicationController, onArticleCatalo
     setAdminCredentialsFormState({ username: '', password: '', verificationCode: '' })
   }
 
-  function handleAdminLogoutClick() {
-    clearPersistedAdminSessionToken()
+  async function handleAdminLogoutClick() {
+    await clearPersistedAdminSessionToken()
     setAdminSessionState({
       isAuthenticated: false,
       username: '',
@@ -315,17 +614,12 @@ export function AdminAccessPanel({ articlePublicationController, onArticleCatalo
     setGlobalBackgroundHexColor(persistedBackgroundHexColor)
   }
 
-  function syncArticleCatalogState(nextArticleCatalog) {
-    setAdminArticleCatalog(nextArticleCatalog)
-    onArticleCatalogChange(nextArticleCatalog)
-  }
-
   function handleCreationFormInputChange(event) {
     const { name, value } = event.target
     setArticleCreationFormState((currentState) => ({ ...currentState, [name]: value }))
   }
 
-  function handleArticleCreationSubmission(event) {
+  async function handleArticleCreationSubmission(event) {
     event.preventDefault()
 
     const articleCreationResult = articlePublicationController.createArticle(
@@ -339,9 +633,30 @@ export function AdminAccessPanel({ articlePublicationController, onArticleCatalo
       return
     }
 
-    syncArticleCatalogState(articleCreationResult.articleCatalog)
+    try {
+      const persistedArticleCatalogResult = await persistArticleCatalogToProjectAndSyncStorage(articleCreationResult.articleCatalog)
+      setArticleFeedbackMessage(persistedArticleCatalogResult.publicMessage)
+    } catch {
+      syncArticleCatalogState(articleCreationResult.articleCatalog)
+      setArticleFeedbackMessage(globalProjectPersistenceFallbackMessage)
+    }
+
     setArticleCreationFormState(globalEmptyArticleFormState)
     setCreationGalleryUrlDraftCatalog([])
+    handleCloseArticleModal()
+  }
+
+  function handleOpenArticleCreationModal() {
+    setArticleCreationFormState(globalEmptyArticleFormState)
+    setCreationGalleryUrlDraftCatalog([])
+    setIsArticleModalOpen(true)
+  }
+
+  function handleCloseArticleModal() {
+    setIsArticleModalOpen(false)
+    setEditingArticleIdentifier(null)
+    setArticleEditFormState(globalEmptyArticleFormState)
+    setEditGalleryUrlDraftCatalog([])
   }
 
   function handleEditArticleClick(articleData) {
@@ -355,12 +670,11 @@ export function AdminAccessPanel({ articlePublicationController, onArticleCatalo
     })
     setEditGalleryUrlDraftCatalog([...(articleData.galleryImageUrls ?? [])])
     setArticleFeedbackMessage('')
+    setIsArticleModalOpen(true)
   }
 
   function handleCancelEditClick() {
-    setEditingArticleIdentifier(null)
-    setArticleEditFormState(globalEmptyArticleFormState)
-    setEditGalleryUrlDraftCatalog([])
+    handleCloseArticleModal()
   }
 
   function handleEditFormInputChange(event) {
@@ -368,7 +682,7 @@ export function AdminAccessPanel({ articlePublicationController, onArticleCatalo
     setArticleEditFormState((currentState) => ({ ...currentState, [name]: value }))
   }
 
-  function handleArticleEditSubmission(event) {
+  async function handleArticleEditSubmission(event) {
     event.preventDefault()
 
     const articleUpdateResult = articlePublicationController.updateArticle(
@@ -383,11 +697,18 @@ export function AdminAccessPanel({ articlePublicationController, onArticleCatalo
       return
     }
 
-    syncArticleCatalogState(articleUpdateResult.articleCatalog)
+    try {
+      const persistedArticleCatalogResult = await persistArticleCatalogToProjectAndSyncStorage(articleUpdateResult.articleCatalog)
+      setArticleFeedbackMessage(persistedArticleCatalogResult.publicMessage)
+    } catch {
+      syncArticleCatalogState(articleUpdateResult.articleCatalog)
+      setArticleFeedbackMessage(globalProjectPersistenceFallbackMessage)
+    }
+
     handleCancelEditClick()
   }
 
-  function handleArticleVisibilityToggle(articleIdentifier) {
+  async function handleArticleVisibilityToggle(articleIdentifier) {
     const articleToggleResult = articlePublicationController.toggleArticlePublication(
       articleIdentifier,
       'admin-article-toggle-flow'
@@ -395,57 +716,79 @@ export function AdminAccessPanel({ articlePublicationController, onArticleCatalo
 
     setArticleFeedbackMessage(articleToggleResult.publicMessage)
 
-    if (articleToggleResult.statusCode === 200) {
+    if (articleToggleResult.statusCode !== 200) {
+      return
+    }
+
+    try {
+      const persistedArticleCatalogResult = await persistArticleCatalogToProjectAndSyncStorage(articleToggleResult.articleCatalog)
+      setArticleFeedbackMessage(persistedArticleCatalogResult.publicMessage)
+    } catch {
       syncArticleCatalogState(articleToggleResult.articleCatalog)
+      setArticleFeedbackMessage(globalProjectPersistenceFallbackMessage)
     }
   }
 
-  function handleArticleDeletion(articleIdentifier) {
+  async function handleArticleDeletion(articleIdentifier) {
     const articleDeletionResult = articlePublicationController.deleteArticle(articleIdentifier, 'admin-article-delete-flow')
 
     setArticleFeedbackMessage(articleDeletionResult.publicMessage)
 
-    if (articleDeletionResult.statusCode === 200) {
-      if (editingArticleIdentifier === articleIdentifier) {
-        handleCancelEditClick()
-      }
-      syncArticleCatalogState(articleDeletionResult.articleCatalog)
-    }
-  }
-
-  function handleDragStart(event, sourceIndex) {
-    dragSourceIndexRef.current = sourceIndex
-    event.dataTransfer.effectAllowed = 'move'
-  }
-
-  function handleDragOver(event) {
-    event.preventDefault()
-    event.dataTransfer.dropEffect = 'move'
-  }
-
-  function handleDrop(event, destinationIndex) {
-    event.preventDefault()
-    const sourceIndex = dragSourceIndexRef.current
-
-    if (sourceIndex === null || sourceIndex === destinationIndex) {
-      dragSourceIndexRef.current = null
+    if (articleDeletionResult.statusCode !== 200) {
       return
     }
 
-    const articleReorderResult = articlePublicationController.reorderArticleByDragAndDrop(
-      sourceIndex,
-      destinationIndex,
-      'admin-article-drag-reorder-flow'
-    )
+    try {
+      const persistedArticleCatalogResult = await persistArticleCatalogToProjectAndSyncStorage(articleDeletionResult.articleCatalog)
+      setArticleFeedbackMessage(persistedArticleCatalogResult.publicMessage)
+      if (editingArticleIdentifier === articleIdentifier) {
+        handleCancelEditClick()
+      }
+    } catch {
+      syncArticleCatalogState(articleDeletionResult.articleCatalog)
+      setArticleFeedbackMessage(globalProjectPersistenceFallbackMessage)
+      if (editingArticleIdentifier === articleIdentifier) {
+        handleCancelEditClick()
+      }
+    }
+  }
 
-    setArticleFeedbackMessage(articleReorderResult.publicMessage)
+  function handleSortableReorder(reorderedCatalog) {
+    currentSortOrderRef.current = reorderedCatalog
+    setSortableArticleCatalog(reorderedCatalog)
+  }
 
-    if (articleReorderResult.statusCode === 200) {
-      syncArticleCatalogState(articleReorderResult.articleCatalog)
+  const handleItemDragStart = useCallback(function handleItemDragStart() {
+    preDragCatalogRef.current = [...currentSortOrderRef.current]
+  }, [])
+
+  const handleItemDragEnd = useCallback(async function handleItemDragEnd() {
+    const previousCatalog = preDragCatalogRef.current
+    const nextCatalog = currentSortOrderRef.current
+
+    if (!previousCatalog) return
+
+    const hasOrderChanged = nextCatalog.some((article, index) => article.id !== previousCatalog[index].id)
+
+    if (hasOrderChanged) {
+      const reorderResult = articlePublicationController.applyArticleCatalogReorder(
+        nextCatalog,
+        'admin-article-drag-reorder-flow'
+      )
+      setArticleFeedbackMessage(reorderResult.publicMessage)
+      if (reorderResult.statusCode === 200) {
+        try {
+          const persistedArticleCatalogResult = await persistArticleCatalogToProjectAndSyncStorage(reorderResult.articleCatalog)
+          setArticleFeedbackMessage(persistedArticleCatalogResult.publicMessage)
+        } catch {
+          syncArticleCatalogState(reorderResult.articleCatalog)
+          setArticleFeedbackMessage(globalProjectPersistenceFallbackMessage)
+        }
+      }
     }
 
-    dragSourceIndexRef.current = null
-  }
+    preDragCatalogRef.current = null
+  }, [articlePublicationController, persistArticleCatalogToProjectAndSyncStorage, syncArticleCatalogState])
 
   const adminSessionExpiresAtLabel = adminSessionState.sessionExpiresAtInSeconds
     ? new Date(adminSessionState.sessionExpiresAtInSeconds * 1000).toLocaleString('pt-BR')
@@ -551,38 +894,38 @@ export function AdminAccessPanel({ articlePublicationController, onArticleCatalo
               Defina a cor de fundo padrão da landing page. A alteração é aplicada imediatamente.
             </p>
 
-            <label className="mt-5 block text-xs font-black uppercase tracking-wider text-inkBlack">
+            <label className="mt-5 flex items-center gap-4 text-xs font-black uppercase tracking-wider text-inkBlack">
               Cor de fundo da landing
               <input
-                className="mt-3 h-14 w-full cursor-pointer rounded-xl border-4 border-inkBlack bg-paperWhite p-2"
+                className="h-10 w-10 shrink-0 cursor-pointer rounded-lg border-4 border-inkBlack bg-paperWhite p-0.5"
                 type="color"
                 value={globalBackgroundHexColor}
                 onChange={handleBackgroundHexColorChange}
                 aria-label="Cor de fundo global da landing"
               />
+              <span className="rounded-xl border-2 border-inkBlack bg-paperWhite px-3 py-1 text-sm font-black normal-case tracking-normal">
+                {globalBackgroundHexColor}
+              </span>
             </label>
-
-            <span className="mt-4 inline-block rounded-xl border-2 border-inkBlack bg-paperWhite px-3 py-2 text-sm font-black text-inkBlack">
-              Hex atual: {globalBackgroundHexColor}
-            </span>
           </article>
 
           <article className="cute-box bg-pastelBlue p-6 sm:p-8">
-            <h2 className="text-2xl font-display text-inkBlack">Publicação de artigos</h2>
-            <p className="mt-2 text-sm font-bold text-inkBlack/80">
-              Crie, edite, publique, oculte, reordene arrastando e remova artigos exibidos na landing.
-            </p>
-
-            <form className="mt-5" onSubmit={handleArticleCreationSubmission}>
-              <ArticleFormFields
-                formState={articleCreationFormState}
-                onInputChange={handleCreationFormInputChange}
-                galleryUrlDraftCatalog={creationGalleryUrlDraftCatalog}
-                onGalleryUrlDraftCatalogChange={setCreationGalleryUrlDraftCatalog}
-                submitLabel="Publicar artigo"
-                onCancelClick={null}
-              />
-            </form>
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div>
+                <h2 className="text-2xl font-display text-inkBlack">Publicação de artigos</h2>
+                <p className="mt-1 text-sm font-bold text-inkBlack/80">
+                  Crie, edite, publique, oculte, reordene arrastando e remova artigos.
+                </p>
+              </div>
+              <button
+                type="button"
+                className="cute-button flex items-center justify-center gap-2 bg-pastelMint px-5 py-2 text-sm"
+                onClick={handleOpenArticleCreationModal}
+              >
+                <FaPlus aria-hidden="true" />
+                <span>Novo artigo</span>
+              </button>
+            </div>
 
             {articleFeedbackMessage ? (
               <p className="cute-box mt-4 bg-paperWhite px-4 py-3 text-sm font-black text-inkBlack" role="status">
@@ -590,90 +933,88 @@ export function AdminAccessPanel({ articlePublicationController, onArticleCatalo
               </p>
             ) : null}
 
-            <ul className="mt-6 grid gap-3" aria-label="Lista de artigos">
-              {adminArticleCatalog.map((articleData, articleIndex) => (
-                <li
+            <Reorder.Group
+              as="ul"
+              axis="y"
+              values={sortableArticleCatalog}
+              onReorder={handleSortableReorder}
+              className="mt-6 flex flex-col gap-3"
+              aria-label="Lista de artigos"
+            >
+              {sortableArticleCatalog.map((articleData) => (
+                <ArticleReorderItem
                   key={articleData.id}
-                  draggable
-                  onDragStart={(event) => handleDragStart(event, articleIndex)}
-                  onDragOver={handleDragOver}
-                  onDrop={(event) => handleDrop(event, articleIndex)}
-                  className="cute-box cursor-grab bg-paperWhite p-4 active:cursor-grabbing"
-                >
-                  {editingArticleIdentifier === articleData.id ? (
-                    <form onSubmit={handleArticleEditSubmission}>
-                      <header className="mb-4">
-                        <h3 className="text-base font-display text-inkBlack">Editando: {articleData.title}</h3>
-                      </header>
-                      <ArticleFormFields
-                        formState={articleEditFormState}
-                        onInputChange={handleEditFormInputChange}
-                        galleryUrlDraftCatalog={editGalleryUrlDraftCatalog}
-                        onGalleryUrlDraftCatalogChange={setEditGalleryUrlDraftCatalog}
-                        submitLabel="Salvar alterações"
-                        onCancelClick={handleCancelEditClick}
-                      />
-                    </form>
-                  ) : (
-                    <>
-                      <header className="flex flex-wrap items-center justify-between gap-3">
-                        <div className="flex items-center gap-3">
-                          <FaGripVertical
-                            className="shrink-0 text-inkBlack/30"
-                            aria-hidden="true"
-                            title="Arraste para reordenar"
-                          />
-                          <div>
-                            <h3 className="text-lg font-display text-inkBlack">{articleData.title}</h3>
-                            <p className="text-xs font-bold uppercase tracking-wider text-inkBlack/70">
-                              {articleData.subtitle}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          {articleData.galleryImageUrls?.length > 0 && (
-                            <span className="rounded-lg border-2 border-inkBlack bg-pastelBlue px-2 py-1 text-xs font-black uppercase">
-                              {articleData.galleryImageUrls.length} foto
-                              {articleData.galleryImageUrls.length !== 1 ? 's' : ''}
-                            </span>
-                          )}
-                          <span className="rounded-lg border-2 border-inkBlack bg-pastelYellow px-2 py-1 text-xs font-black uppercase">
-                            {articleData.isPublished ? 'Publicado' : 'Oculto'}
-                          </span>
-                        </div>
-                      </header>
-                      <div className="mt-4 flex flex-wrap gap-2">
-                        <button
-                          type="button"
-                          className="cute-button flex h-10 items-center justify-center gap-1 bg-pastelYellow px-4 py-1 text-xs"
-                          onClick={() => handleEditArticleClick(articleData)}
-                        >
-                          <FaEdit aria-hidden="true" />
-                          <span>Editar</span>
-                        </button>
-                        <button
-                          type="button"
-                          className="cute-button h-10 bg-pastelMint px-4 py-1 text-xs"
-                          onClick={() => handleArticleVisibilityToggle(articleData.id)}
-                        >
-                          {articleData.isPublished ? 'Ocultar' : 'Publicar'}
-                        </button>
-                        <button
-                          type="button"
-                          className="cute-button flex h-10 items-center justify-center gap-1 bg-pastelPink px-4 py-1 text-xs"
-                          onClick={() => handleArticleDeletion(articleData.id)}
-                        >
-                          <FaTrash aria-hidden="true" />
-                          <span>Excluir</span>
-                        </button>
-                      </div>
-                    </>
-                  )}
-                </li>
+                  articleData={articleData}
+                  onDragStart={handleItemDragStart}
+                  onDragEnd={handleItemDragEnd}
+                  onEdit={handleEditArticleClick}
+                  onToggleVisibility={handleArticleVisibilityToggle}
+                  onDelete={handleArticleDeletion}
+                />
               ))}
-            </ul>
+            </Reorder.Group>
           </article>
         </section>
+      )}
+
+      {isArticleModalOpen && (
+        <div
+          className="fixed inset-0 z-50 overflow-y-auto bg-inkBlack/80 px-4 py-10 backdrop-blur-sm"
+          onClick={handleCloseArticleModal}
+          aria-modal="true"
+          role="dialog"
+          aria-label={editingArticleIdentifier ? 'Editar artigo' : 'Novo artigo'}
+        >
+          <article
+            className="relative mx-auto w-full max-w-2xl rounded-xl border-4 border-inkBlack bg-paperWhite p-6 sm:p-8"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <button
+              type="button"
+              className="cute-control-button cute-control-button-close absolute right-4 top-4 z-10 flex h-10 w-10 items-center justify-center text-xl font-black"
+              onClick={handleCloseArticleModal}
+              aria-label="Fechar modal"
+            >
+              ×
+            </button>
+
+            <h2 className="mb-6 text-2xl font-display text-inkBlack">
+              {editingArticleIdentifier ? 'Editar artigo' : 'Novo artigo'}
+            </h2>
+
+            {editingArticleIdentifier ? (
+              <form onSubmit={handleArticleEditSubmission}>
+                <ArticleFormFields
+                  formState={articleEditFormState}
+                  onInputChange={handleEditFormInputChange}
+                  galleryUrlDraftCatalog={editGalleryUrlDraftCatalog}
+                  onGalleryUrlDraftCatalogChange={setEditGalleryUrlDraftCatalog}
+                  submitLabel="Salvar alterações"
+                  onCancelClick={handleCancelEditClick}
+                  onImageUpload={handleImageUploadToProject}
+                />
+              </form>
+            ) : (
+              <form onSubmit={handleArticleCreationSubmission}>
+                <ArticleFormFields
+                  formState={articleCreationFormState}
+                  onInputChange={handleCreationFormInputChange}
+                  galleryUrlDraftCatalog={creationGalleryUrlDraftCatalog}
+                  onGalleryUrlDraftCatalogChange={setCreationGalleryUrlDraftCatalog}
+                  submitLabel="Publicar artigo"
+                  onCancelClick={handleCloseArticleModal}
+                  onImageUpload={handleImageUploadToProject}
+                />
+              </form>
+            )}
+
+            {articleFeedbackMessage ? (
+              <p className="cute-box mt-4 bg-paperWhite px-4 py-3 text-sm font-black text-inkBlack" role="status">
+                {articleFeedbackMessage}
+              </p>
+            ) : null}
+          </article>
+        </div>
       )}
     </main>
   )
