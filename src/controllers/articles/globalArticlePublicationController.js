@@ -56,7 +56,7 @@ class GlobalArticlePublicationController {
       persistArticleCatalog(nextArticleCatalog, this.storageClient)
 
       return resolveSuccessResponse('Artigo publicado com sucesso.', nextArticleCatalog)
-    } catch (unknownError) {
+    } catch {
       return mapHttpStatusToSanitizedErrorResponse(500, correlationIdentifier)
     }
   }
@@ -79,7 +79,7 @@ class GlobalArticlePublicationController {
 
       persistArticleCatalog(nextArticleCatalog, this.storageClient)
       return resolveSuccessResponse('Visibilidade do artigo atualizada com sucesso.', nextArticleCatalog)
-    } catch (unknownError) {
+    } catch {
       return mapHttpStatusToSanitizedErrorResponse(500, correlationIdentifier)
     }
   }
@@ -98,7 +98,7 @@ class GlobalArticlePublicationController {
       persistArticleCatalog(normalizedArticleCatalog, this.storageClient)
 
       return resolveSuccessResponse('Artigo removido com sucesso.', normalizedArticleCatalog)
-    } catch (unknownError) {
+    } catch {
       return mapHttpStatusToSanitizedErrorResponse(500, correlationIdentifier)
     }
   }
@@ -127,7 +127,7 @@ class GlobalArticlePublicationController {
       persistArticleCatalog(normalizedArticleCatalog, this.storageClient)
 
       return resolveSuccessResponse('Ordem de exibição atualizada com sucesso.', normalizedArticleCatalog)
-    } catch (unknownError) {
+    } catch {
       return mapHttpStatusToSanitizedErrorResponse(500, correlationIdentifier)
     }
   }
@@ -153,7 +153,17 @@ class GlobalArticlePublicationController {
       persistArticleCatalog(normalizedArticleCatalog, this.storageClient)
 
       return resolveSuccessResponse('Ordem de exibição atualizada com sucesso.', normalizedArticleCatalog)
-    } catch (unknownError) {
+    } catch {
+      return mapHttpStatusToSanitizedErrorResponse(500, correlationIdentifier)
+    }
+  }
+
+  applyArticleCatalogReorder(sortedArticleCatalog, correlationIdentifier) {
+    try {
+      const normalizedCatalog = normalizeCatalogOrderIndex(sortedArticleCatalog)
+      persistArticleCatalog(normalizedCatalog, this.storageClient)
+      return resolveSuccessResponse('Ordem de exibição atualizada com sucesso.', normalizedCatalog)
+    } catch {
       return mapHttpStatusToSanitizedErrorResponse(500, correlationIdentifier)
     }
   }
@@ -194,7 +204,7 @@ class GlobalArticlePublicationController {
       persistArticleCatalog(nextArticleCatalog, this.storageClient)
 
       return resolveSuccessResponse('Artigo atualizado com sucesso.', nextArticleCatalog)
-    } catch (unknownError) {
+    } catch {
       return mapHttpStatusToSanitizedErrorResponse(500, correlationIdentifier)
     }
   }

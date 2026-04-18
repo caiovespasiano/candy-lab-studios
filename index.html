@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="pt-BR">
+<html lang="pt-BR" style="background:#ffffff">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
@@ -14,9 +14,20 @@
       content="nosniff"
     />
     <meta name="referrer" content="strict-origin-when-cross-origin" />
-    <title>Candy Lab Studios | Portfólio 3D Roblox</title>
+    <title>Candy Lab Studios</title>
   </head>
-  <body>
+  <body style="background:#ffffff">
+    <script>
+      (function () {
+        try {
+          var bg = localStorage.getItem('globalLandingBackgroundHexColor')
+          if (bg && /^#[0-9a-fA-F]{6}$/.test(bg)) {
+            document.documentElement.style.background = bg
+            document.body.style.background = bg
+          }
+        } catch (_) {}
+      })()
+    </script>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
   </body>
