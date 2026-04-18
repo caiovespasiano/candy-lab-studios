@@ -78,4 +78,28 @@ describe('requestAdminAuthenticationUsingGateway', () => {
     expect(response.statusCode).toBe(422)
     expect(mockedGatewayClient.requestAdminAuthentication).not.toHaveBeenCalled()
   })
+
+  test('whenGatewayReturnsRateLimitThenReturnsGatewayLockMessage', async () => {
+    const mockedGatewayClient = {
+      requestAdminAuthentication: vi.fn().mockResolvedValue({
+        statusCode: 429,
+        payload: {
+          message: 'Acesso bloqueado por excesso de tentativas. Tente novamente em 120s.',
+        },
+      }),
+    }
+
+    const response = await requestAdminAuthenticationUsingGateway(
+      {
+        username: 'admin',
+        password: 'wrong-password',
+        verificationCode: '2026',
+      },
+      mockedGatewayClient,
+      'admin-correlation-400'
+    )
+
+    expect(response.statusCode).toBe(429)
+    expect(response.publicMessage).toBe('Acesso bloqueado por excesso de tentativas. Tente novamente em 120s.')
+  })
 })
