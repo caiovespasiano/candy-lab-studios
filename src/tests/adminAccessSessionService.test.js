@@ -1,57 +1,71 @@
-import { describe, expect, test } from 'vitest'
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import {
   clearPersistedAdminSessionToken,
   persistAdminSessionToken,
   restoreValidAdminSessionData,
 } from '../services/adminAccessSessionService'
-import { createAdminSessionToken } from '../services/adminSessionTokenService'
-
-function createInMemoryStorageClient() {
-  const storageRecord = new Map()
-
-  return {
-    getItem(keyName) {
-      return storageRecord.has(keyName) ? storageRecord.get(keyName) : null
-    },
-    setItem(keyName, value) {
-      storageRecord.set(keyName, value)
-    },
-    removeItem(keyName) {
-      storageRecord.delete(keyName)
-    },
-  }
-}
 
 describe('adminAccessSessionService', () => {
-  test('whenValidTokenIsPersistedThenRestoreReturnsAuthenticatedSession', async () => {
-    const storageClient = createInMemoryStorageClient()
-    const nowTimestampValue = 1_700_000_000_000
-    const sessionToken = await createAdminSessionToken({ username: 'admin' }, () => nowTimestampValue)
+  const originalFetch = globalThis.fetch
 
-    persistAdminSessionToken(sessionToken, storageClient)
-    const restoredSessionData = await restoreValidAdminSessionData(storageClient, () => nowTimestampValue)
+  beforeEach(() => {
+    globalThis.fetch = vi.fn()
+  })
 
+  afterEach(() => {
+    globalThis.fetch = originalFetch
+    vi.restoreAllMocks()
+  })
+
+  test('whenSessionEndpointReturnsValidSessionThenRestoreReturnsAuthenticatedSession', async () => {
+    globalThis.fetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        statusCode: 200,
+        username: 'admin',
+        sessionExpiresAtInSeconds: 1_700_000_100,
+      }),
+    })
+
+    const restoredSessionData = await restoreValidAdminSessionData()
+
+    expect(globalThis.fetch).toHaveBeenCalledWith('/api/admin/session', {
+      method: 'GET',
+      headers: { Accept: 'application/json' },
+      credentials: 'include',
+    })
     expect(restoredSessionData.isAuthenticated).toBe(true)
     expect(restoredSessionData.sessionData.username).toBe('admin')
   })
 
-  test('whenPersistedTokenIsInvalidThenRestoreReturnsUnauthenticatedState', async () => {
-    const storageClient = createInMemoryStorageClient()
+  test('whenSessionEndpointReturnsUnauthorizedThenRestoreReturnsUnauthenticatedState', async () => {
+    globalThis.fetch.mockResolvedValue({
+      ok: false,
+      json: async () => ({ statusCode: 401 }),
+    })
 
-    persistAdminSessionToken('token-invalido', storageClient)
-    const restoredSessionData = await restoreValidAdminSessionData(storageClient)
+    const restoredSessionData = await restoreValidAdminSessionData()
 
     expect(restoredSessionData.isAuthenticated).toBe(false)
   })
 
-  test('whenSessionIsClearedThenRestoreReturnsUnauthenticatedState', async () => {
-    const storageClient = createInMemoryStorageClient()
-    const sessionToken = await createAdminSessionToken({ username: 'admin' })
+  test('whenSessionIsClearedThenLogoutEndpointIsCalledWithCookieCredentials', async () => {
+    globalThis.fetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({ statusCode: 200 }),
+    })
 
-    persistAdminSessionToken(sessionToken, storageClient)
-    clearPersistedAdminSessionToken(storageClient)
-    const restoredSessionData = await restoreValidAdminSessionData(storageClient)
+    await clearPersistedAdminSessionToken()
 
-    expect(restoredSessionData.isAuthenticated).toBe(false)
+    expect(globalThis.fetch).toHaveBeenCalledWith('/api/admin/logout', {
+      method: 'POST',
+      headers: { Accept: 'application/json' },
+      credentials: 'include',
+    })
+  })
+
+  test('whenPersistingSessionThenReturnsNoOpSuccess', async () => {
+    const persistResult = await persistAdminSessionToken('token-ignored')
+    expect(persistResult.isPersisted).toBe(true)
   })
 })

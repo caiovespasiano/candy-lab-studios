@@ -38,19 +38,31 @@
 
 @layer utilities {
   .cute-box {
-    @apply rounded-xl border-4 border-inkBlack bg-paperWhite shadow-[6px_6px_0px_0px_#111111] transition-transform hover:-translate-y-1 hover:shadow-[6px_8px_0px_0px_#111111];
+    @apply rounded-xl border-4 border-inkBlack bg-paperWhite shadow-[6px_6px_0px_0px_#111111] transition-transform duration-300 ease-out hover:-translate-y-1;
+  }
+
+  .no-lift {
+    @apply transition-none hover:translate-y-0 hover:shadow-[6px_6px_0px_0px_#111111];
+  }
+
+  .modal-enter {
+    animation: modalEnter 260ms cubic-bezier(0.22, 1, 0.36, 1);
   }
   
   .cute-button {
-    @apply inline-flex items-center justify-center rounded-full border-4 border-inkBlack bg-pastelYellow px-8 py-3 text-center font-display text-lg uppercase tracking-wide leading-none text-inkBlack shadow-[4px_4px_0px_0px_#111111] transition-transform hover:-translate-y-1 hover:shadow-[4px_6px_0px_0px_#111111] active:translate-y-1 active:shadow-[0px_0px_0px_0px_#111111];
+    @apply inline-flex transform-gpu items-center justify-center rounded-full border-4 border-inkBlack bg-pastelYellow px-5 py-2 text-center font-display text-sm uppercase tracking-wide leading-none text-inkBlack shadow-[4px_4px_0px_0px_#111111] transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] hover:scale-[1.015] active:scale-[0.992] sm:px-8 sm:py-3 sm:text-lg;
   }
 
   .cute-control-button {
-    @apply inline-flex items-center justify-center rounded-full border-4 border-inkBlack bg-pastelPink text-center leading-none text-inkBlack shadow-[4px_4px_0px_0px_#111111] transition-colors hover:bg-[#f09490] active:bg-[#e87e78];
+    @apply inline-flex items-center justify-center rounded-full border-4 border-inkBlack bg-pastelPink text-center leading-none text-inkBlack shadow-[4px_4px_0px_0px_#111111] transition-[transform,background-color] duration-220 ease-out hover:scale-[1.06] hover:bg-[#f09490] active:scale-[0.97] active:bg-[#e87e78];
+  }
+
+  .carousel-dot {
+    @apply h-3 w-3 rounded-full border-2 border-inkBlack transition-[transform,background-color,box-shadow] duration-220 ease-out hover:scale-130 hover:-translate-y-0.5 hover:shadow-[1px_2px_0px_0px_#111111] focus-visible:scale-130 focus-visible:-translate-y-0.5 focus-visible:shadow-[1px_2px_0px_0px_#111111];
   }
 
   .cute-control-button-close {
-    @apply hover:bg-[#e87e78] active:bg-[#da6a64];
+    @apply transition-colors duration-220 ease-out hover:bg-[#e87e78] active:bg-[#da6a64];
   }
 
   .cute-button-share {
@@ -58,6 +70,27 @@
   }
 
   .cute-input {
-    @apply min-w-0 rounded-xl border-4 border-inkBlack bg-paperWhite px-4 py-3 font-bold text-inkBlack outline-none transition-transform focus:-translate-y-1 focus:shadow-[4px_4px_0px_0px_#111111];
+    @apply min-w-0 rounded-xl border-4 border-solid border-inkBlack bg-paperWhite px-3 py-2 font-bold text-inkBlack outline-none transition-colors duration-200 ease-out focus:border-dashed active:border-dashed sm:px-4 sm:py-3;
+  }
+
+  .header-candy-float-layer {
+    @apply pointer-events-none absolute inset-x-0 top-0 h-1/2 overflow-hidden;
+  }
+
+  .header-candy-particle {
+    @apply absolute select-none text-3xl sm:text-4xl;
+    will-change: transform, opacity;
   }
 }
+
+@keyframes modalEnter {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+

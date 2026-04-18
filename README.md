@@ -36,6 +36,24 @@ npm install
 npm run dev
 ```
 
+### API de Persistencia no Projeto
+
+- Em desenvolvimento (`npm run dev`), a API local de persistencia e servida pelo middleware do Vite.
+- Em producao, a API local e servida por um backend Node dedicado.
+
+## Producao Local
+
+```bash
+npm run build
+npm run start
+```
+
+Servidor de producao:
+
+- Frontend: `dist/`
+- API: `/api/admin/articles` e `/api/admin/upload-image`
+- Uploads: `public/uploads/`
+
 ## Testes
 
 ```bash

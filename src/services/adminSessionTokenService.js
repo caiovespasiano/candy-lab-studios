@@ -105,7 +105,7 @@ export async function parseAndValidateAdminSessionToken(rawSessionToken, nowTime
         expiresAtInSeconds: payloadObject.exp,
       },
     }
-  } catch (unknownError) {
+  } catch {
     return { isValid: false, reason: 'falha-decodificacao' }
   }
 }
