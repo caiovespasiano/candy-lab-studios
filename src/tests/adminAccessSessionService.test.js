@@ -23,34 +23,34 @@ function createInMemoryStorageClient() {
 }
 
 describe('adminAccessSessionService', () => {
-  test('whenValidTokenIsPersistedThenRestoreReturnsAuthenticatedSession', () => {
+  test('whenValidTokenIsPersistedThenRestoreReturnsAuthenticatedSession', async () => {
     const storageClient = createInMemoryStorageClient()
     const nowTimestampValue = 1_700_000_000_000
-    const sessionToken = createAdminSessionToken({ username: 'admin' }, () => nowTimestampValue)
+    const sessionToken = await createAdminSessionToken({ username: 'admin' }, () => nowTimestampValue)
 
     persistAdminSessionToken(sessionToken, storageClient)
-    const restoredSessionData = restoreValidAdminSessionData(storageClient, () => nowTimestampValue)
+    const restoredSessionData = await restoreValidAdminSessionData(storageClient, () => nowTimestampValue)
 
     expect(restoredSessionData.isAuthenticated).toBe(true)
     expect(restoredSessionData.sessionData.username).toBe('admin')
   })
 
-  test('whenPersistedTokenIsInvalidThenRestoreReturnsUnauthenticatedState', () => {
+  test('whenPersistedTokenIsInvalidThenRestoreReturnsUnauthenticatedState', async () => {
     const storageClient = createInMemoryStorageClient()
 
     persistAdminSessionToken('token-invalido', storageClient)
-    const restoredSessionData = restoreValidAdminSessionData(storageClient)
+    const restoredSessionData = await restoreValidAdminSessionData(storageClient)
 
     expect(restoredSessionData.isAuthenticated).toBe(false)
   })
 
-  test('whenSessionIsClearedThenRestoreReturnsUnauthenticatedState', () => {
+  test('whenSessionIsClearedThenRestoreReturnsUnauthenticatedState', async () => {
     const storageClient = createInMemoryStorageClient()
-    const sessionToken = createAdminSessionToken({ username: 'admin' })
+    const sessionToken = await createAdminSessionToken({ username: 'admin' })
 
     persistAdminSessionToken(sessionToken, storageClient)
     clearPersistedAdminSessionToken(storageClient)
-    const restoredSessionData = restoreValidAdminSessionData(storageClient)
+    const restoredSessionData = await restoreValidAdminSessionData(storageClient)
 
     expect(restoredSessionData.isAuthenticated).toBe(false)
   })

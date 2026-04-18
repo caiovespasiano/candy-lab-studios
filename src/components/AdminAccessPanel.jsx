@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from 'react'
-import { FaArrowLeft, FaEdit, FaGripVertical, FaLock, FaPlus, FaSignOutAlt, FaTrash } from 'react-icons/fa'
+import { Fragment, useEffect, useRef, useState } from 'react'
+import { FaArrowLeft, FaEdit, FaGripVertical, FaLock, FaPlus, FaSignOutAlt, FaTrash, FaUpload } from 'react-icons/fa'
 import { globalAdminAccessConfig } from '../constants/globalAdminAccessConfig'
 import { requestAdminAuthenticationUsingGateway } from '../services/adminAuthenticationService'
 import {
@@ -32,8 +32,8 @@ const globalDefaultAdminAuthenticationGatewayClient = {
     }
 
     const { createAdminSessionToken, parseAndValidateAdminSessionToken } = await import('../services/adminSessionTokenService')
-    const sessionToken = createAdminSessionToken({ username: sanitizedAdminCredentials.username })
-    const sessionValidationResult = parseAndValidateAdminSessionToken(sessionToken)
+    const sessionToken = await createAdminSessionToken({ username: sanitizedAdminCredentials.username })
+    const sessionValidationResult = await parseAndValidateAdminSessionToken(sessionToken)
 
     return {
       statusCode: 200,
@@ -47,21 +47,11 @@ const globalDefaultAdminAuthenticationGatewayClient = {
   },
 }
 
-function resolveInitialAdminSessionState() {
-  const restoredAdminSession = restoreValidAdminSessionData()
-
-  if (!restoredAdminSession.isAuthenticated) {
-    return {
-      isAuthenticated: false,
-      username: '',
-      sessionExpiresAtInSeconds: null,
-    }
-  }
-
+function resolveEmptyAdminSessionState() {
   return {
-    isAuthenticated: true,
-    username: restoredAdminSession.sessionData.username,
-    sessionExpiresAtInSeconds: restoredAdminSession.sessionData.expiresAtInSeconds,
+    isAuthenticated: false,
+    username: '',
+    sessionExpiresAtInSeconds: null,
   }
 }
 
@@ -73,8 +63,51 @@ const globalEmptyArticleFormState = {
   imageAlternativeText: '',
 }
 
+const globalAllowedImageMimeTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/avif']
+const globalMaxUploadFileSizeInBytes = 10 * 1024 * 1024
+
+function convertImageFileToWebpDataUrl(imageFile) {
+  return new Promise((resolve, reject) => {
+    const objectUrl = URL.createObjectURL(imageFile)
+    const imageElement = new Image()
+
+    imageElement.onload = () => {
+      const canvasElement = document.createElement('canvas')
+      canvasElement.width = imageElement.naturalWidth
+      canvasElement.height = imageElement.naturalHeight
+      const canvasContext = canvasElement.getContext('2d')
+      canvasContext.drawImage(imageElement, 0, 0)
+      URL.revokeObjectURL(objectUrl)
+      canvasElement.toBlob(
+        (blobResult) => {
+          if (!blobResult) {
+            reject(new Error('Conversão para WebP falhou.'))
+            return
+          }
+          const fileReader = new FileReader()
+          fileReader.onload = () => resolve(fileReader.result)
+          fileReader.onerror = () => reject(new Error('Leitura do arquivo falhou.'))
+          fileReader.readAsDataURL(blobResult)
+        },
+        'image/webp',
+        0.92
+      )
+    }
+
+    imageElement.onerror = () => {
+      URL.revokeObjectURL(objectUrl)
+      reject(new Error('Carregamento da imagem falhou.'))
+    }
+
+    imageElement.src = objectUrl
+  })
+}
+
 function GalleryUrlEditor({ galleryImageUrlDraftCatalog, onGalleryUrlDraftCatalogChange }) {
   const [galleryUrlInputValue, setGalleryUrlInputValue] = useState('')
+  const [uploadConversionError, setUploadConversionError] = useState('')
+  const [isConvertingUpload, setIsConvertingUpload] = useState(false)
+  const fileInputRef = useRef(null)
 
   function handleAddGalleryUrlClick() {
     const trimmedUrl = galleryUrlInputValue.trim()
@@ -94,8 +127,37 @@ function GalleryUrlEditor({ galleryImageUrlDraftCatalog, onGalleryUrlDraftCatalo
     }
   }
 
+  async function handleGalleryImageFileChange(event) {
+    const selectedFile = event.target.files?.[0]
+    event.target.value = ''
+
+    if (!selectedFile) return
+
+    if (!globalAllowedImageMimeTypes.includes(selectedFile.type)) {
+      setUploadConversionError('Formato não suportado. Use JPG, PNG, GIF, WebP ou AVIF.')
+      return
+    }
+
+    if (selectedFile.size > globalMaxUploadFileSizeInBytes) {
+      setUploadConversionError('Arquivo muito grande. Limite: 10 MB.')
+      return
+    }
+
+    setUploadConversionError('')
+    setIsConvertingUpload(true)
+
+    try {
+      const webpDataUrl = await convertImageFileToWebpDataUrl(selectedFile)
+      onGalleryUrlDraftCatalogChange([...galleryImageUrlDraftCatalog, webpDataUrl])
+    } catch {
+      setUploadConversionError('Não foi possível converter a imagem.')
+    } finally {
+      setIsConvertingUpload(false)
+    }
+  }
+
   return (
-    <div>
+    <div className="w-full min-w-0">
       <span className="block text-xs font-black uppercase tracking-wider text-inkBlack">Galeria de imagens</span>
       <div className="mt-2 flex gap-2">
         <input
@@ -109,30 +171,57 @@ function GalleryUrlEditor({ galleryImageUrlDraftCatalog, onGalleryUrlDraftCatalo
         <button
           type="button"
           onClick={handleAddGalleryUrlClick}
-          className="cute-button flex h-12 w-12 items-center justify-center bg-pastelMint p-0!"
+          className="cute-button flex h-12 w-12 shrink-0 items-center justify-center bg-pastelMint p-0!"
           aria-label="Adicionar URL à galeria"
         >
           <FaPlus aria-hidden="true" />
         </button>
+        <button
+          type="button"
+          onClick={() => fileInputRef.current?.click()}
+          disabled={isConvertingUpload}
+          className="cute-button flex h-12 w-12 shrink-0 items-center justify-center bg-pastelBlue p-0! text-base disabled:opacity-60"
+          aria-label="Fazer upload de imagem"
+          title="Upload (converte para WebP)"
+        >
+          {isConvertingUpload ? (
+            <span className="text-xs font-black">...</span>
+          ) : (
+            <FaUpload aria-hidden="true" />
+          )}
+        </button>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={handleGalleryImageFileChange}
+          aria-label="Selecionar imagem para upload"
+        />
       </div>
+      {uploadConversionError && (
+        <p className="mt-1 text-xs font-black text-red-700" role="alert">{uploadConversionError}</p>
+      )}
       {galleryImageUrlDraftCatalog.length > 0 && (
         <ul className="mt-3 grid gap-2">
           {galleryImageUrlDraftCatalog.map((galleryUrl, urlIndex) => (
             <li
-              key={`${urlIndex}-${galleryUrl}`}
-              className="flex items-center gap-2 rounded-xl border-2 border-inkBlack bg-paperWhite px-3 py-2"
+              key={`${urlIndex}-${galleryUrl.slice(0, 40)}`}
+              className="flex min-w-0 overflow-hidden items-center gap-2 rounded-xl border-2 border-inkBlack bg-paperWhite px-3 py-2"
             >
               <img
                 src={galleryUrl}
                 alt={`Pré-visualização ${urlIndex + 1}`}
-                className="h-10 w-14 rounded-lg border border-inkBlack/20 object-cover"
+                className="h-10 w-14 shrink-0 rounded-lg border border-inkBlack/20 object-cover"
                 loading="lazy"
               />
-              <span className="flex-1 truncate text-xs font-bold text-inkBlack/70">{galleryUrl}</span>
+              <span className="flex-1 truncate text-xs font-bold text-inkBlack/70">
+                {galleryUrl.startsWith('data:') ? `[upload ${urlIndex + 1}]` : galleryUrl}
+              </span>
               <button
                 type="button"
                 onClick={() => handleRemoveGalleryUrlAtIndex(urlIndex)}
-                className="cute-control-button h-8 w-8 text-sm cute-control-button-close"
+                className="cute-control-button cute-control-button-close h-8 w-8 shrink-0 text-sm"
                 aria-label={`Remover imagem ${urlIndex + 1} da galeria`}
               >
                 ×
@@ -154,7 +243,7 @@ function ArticleFormFields({
   onCancelClick,
 }) {
   return (
-    <div className="grid gap-4">
+    <div className="grid min-w-0 gap-4">
       <label className="text-xs font-black uppercase tracking-wider text-inkBlack">
         Título
         <input
@@ -213,7 +302,7 @@ function ArticleFormFields({
         galleryImageUrlDraftCatalog={galleryUrlDraftCatalog}
         onGalleryUrlDraftCatalogChange={onGalleryUrlDraftCatalogChange}
       />
-      <div className="flex gap-3 pt-1">
+      <div className="flex min-w-0 gap-3 pt-1">
         <button type="submit" className="cute-button flex flex-1 items-center justify-center gap-2 bg-pastelMint">
           <FaPlus aria-hidden="true" />
           <span>{submitLabel}</span>
@@ -238,7 +327,7 @@ export function AdminAccessPanel({ articlePublicationController, onArticleCatalo
     password: '',
     verificationCode: '',
   })
-  const [adminSessionState, setAdminSessionState] = useState(resolveInitialAdminSessionState)
+  const [adminSessionState, setAdminSessionState] = useState(resolveEmptyAdminSessionState)
   const [adminFeedbackMessage, setAdminFeedbackMessage] = useState('')
   const [articleFeedbackMessage, setArticleFeedbackMessage] = useState('')
   const [adminArticleCatalog, setAdminArticleCatalog] = useState(() => {
@@ -253,6 +342,22 @@ export function AdminAccessPanel({ articlePublicationController, onArticleCatalo
     return loadPersistedGlobalBackgroundHexColor()
   })
   const dragSourceIndexRef = useRef(null)
+  const [dragOverIndex, setDragOverIndex] = useState(null)
+  const [isArticleModalOpen, setIsArticleModalOpen] = useState(false)
+
+  useEffect(() => {
+    async function restoreAdminSessionFromStorage() {
+      const restoredAdminSession = await restoreValidAdminSessionData()
+      if (restoredAdminSession.isAuthenticated) {
+        setAdminSessionState({
+          isAuthenticated: true,
+          username: restoredAdminSession.sessionData.username,
+          sessionExpiresAtInSeconds: restoredAdminSession.sessionData.expiresAtInSeconds,
+        })
+      }
+    }
+    restoreAdminSessionFromStorage()
+  }, [])
 
   useEffect(() => {
     applyGlobalBackgroundHexColor(globalBackgroundHexColor)
@@ -342,6 +447,20 @@ export function AdminAccessPanel({ articlePublicationController, onArticleCatalo
     syncArticleCatalogState(articleCreationResult.articleCatalog)
     setArticleCreationFormState(globalEmptyArticleFormState)
     setCreationGalleryUrlDraftCatalog([])
+    handleCloseArticleModal()
+  }
+
+  function handleOpenArticleCreationModal() {
+    setArticleCreationFormState(globalEmptyArticleFormState)
+    setCreationGalleryUrlDraftCatalog([])
+    setIsArticleModalOpen(true)
+  }
+
+  function handleCloseArticleModal() {
+    setIsArticleModalOpen(false)
+    setEditingArticleIdentifier(null)
+    setArticleEditFormState(globalEmptyArticleFormState)
+    setEditGalleryUrlDraftCatalog([])
   }
 
   function handleEditArticleClick(articleData) {
@@ -355,12 +474,11 @@ export function AdminAccessPanel({ articlePublicationController, onArticleCatalo
     })
     setEditGalleryUrlDraftCatalog([...(articleData.galleryImageUrls ?? [])])
     setArticleFeedbackMessage('')
+    setIsArticleModalOpen(true)
   }
 
   function handleCancelEditClick() {
-    setEditingArticleIdentifier(null)
-    setArticleEditFormState(globalEmptyArticleFormState)
-    setEditGalleryUrlDraftCatalog([])
+    handleCloseArticleModal()
   }
 
   function handleEditFormInputChange(event) {
@@ -418,14 +536,21 @@ export function AdminAccessPanel({ articlePublicationController, onArticleCatalo
     event.dataTransfer.effectAllowed = 'move'
   }
 
-  function handleDragOver(event) {
+  function handleDragOver(event, overIndex) {
     event.preventDefault()
     event.dataTransfer.dropEffect = 'move'
+    setDragOverIndex(overIndex)
+  }
+
+  function handleDragEnd() {
+    dragSourceIndexRef.current = null
+    setDragOverIndex(null)
   }
 
   function handleDrop(event, destinationIndex) {
     event.preventDefault()
     const sourceIndex = dragSourceIndexRef.current
+    setDragOverIndex(null)
 
     if (sourceIndex === null || sourceIndex === destinationIndex) {
       dragSourceIndexRef.current = null
@@ -551,38 +676,38 @@ export function AdminAccessPanel({ articlePublicationController, onArticleCatalo
               Defina a cor de fundo padrão da landing page. A alteração é aplicada imediatamente.
             </p>
 
-            <label className="mt-5 block text-xs font-black uppercase tracking-wider text-inkBlack">
+            <label className="mt-5 flex items-center gap-4 text-xs font-black uppercase tracking-wider text-inkBlack">
               Cor de fundo da landing
               <input
-                className="mt-3 h-14 w-full cursor-pointer rounded-xl border-4 border-inkBlack bg-paperWhite p-2"
+                className="h-10 w-10 shrink-0 cursor-pointer rounded-lg border-4 border-inkBlack bg-paperWhite p-0.5"
                 type="color"
                 value={globalBackgroundHexColor}
                 onChange={handleBackgroundHexColorChange}
                 aria-label="Cor de fundo global da landing"
               />
+              <span className="rounded-xl border-2 border-inkBlack bg-paperWhite px-3 py-1 text-sm font-black normal-case tracking-normal">
+                {globalBackgroundHexColor}
+              </span>
             </label>
-
-            <span className="mt-4 inline-block rounded-xl border-2 border-inkBlack bg-paperWhite px-3 py-2 text-sm font-black text-inkBlack">
-              Hex atual: {globalBackgroundHexColor}
-            </span>
           </article>
 
           <article className="cute-box bg-pastelBlue p-6 sm:p-8">
-            <h2 className="text-2xl font-display text-inkBlack">Publicação de artigos</h2>
-            <p className="mt-2 text-sm font-bold text-inkBlack/80">
-              Crie, edite, publique, oculte, reordene arrastando e remova artigos exibidos na landing.
-            </p>
-
-            <form className="mt-5" onSubmit={handleArticleCreationSubmission}>
-              <ArticleFormFields
-                formState={articleCreationFormState}
-                onInputChange={handleCreationFormInputChange}
-                galleryUrlDraftCatalog={creationGalleryUrlDraftCatalog}
-                onGalleryUrlDraftCatalogChange={setCreationGalleryUrlDraftCatalog}
-                submitLabel="Publicar artigo"
-                onCancelClick={null}
-              />
-            </form>
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div>
+                <h2 className="text-2xl font-display text-inkBlack">Publicação de artigos</h2>
+                <p className="mt-1 text-sm font-bold text-inkBlack/80">
+                  Crie, edite, publique, oculte, reordene arrastando e remova artigos.
+                </p>
+              </div>
+              <button
+                type="button"
+                className="cute-button flex items-center justify-center gap-2 bg-pastelMint px-5 py-2 text-sm"
+                onClick={handleOpenArticleCreationModal}
+              >
+                <FaPlus aria-hidden="true" />
+                <span>Novo artigo</span>
+              </button>
+            </div>
 
             {articleFeedbackMessage ? (
               <p className="cute-box mt-4 bg-paperWhite px-4 py-3 text-sm font-black text-inkBlack" role="status">
@@ -591,89 +716,154 @@ export function AdminAccessPanel({ articlePublicationController, onArticleCatalo
             ) : null}
 
             <ul className="mt-6 grid gap-3" aria-label="Lista de artigos">
-              {adminArticleCatalog.map((articleData, articleIndex) => (
-                <li
-                  key={articleData.id}
-                  draggable
-                  onDragStart={(event) => handleDragStart(event, articleIndex)}
-                  onDragOver={handleDragOver}
-                  onDrop={(event) => handleDrop(event, articleIndex)}
-                  className="cute-box cursor-grab bg-paperWhite p-4 active:cursor-grabbing"
-                >
-                  {editingArticleIdentifier === articleData.id ? (
-                    <form onSubmit={handleArticleEditSubmission}>
-                      <header className="mb-4">
-                        <h3 className="text-base font-display text-inkBlack">Editando: {articleData.title}</h3>
-                      </header>
-                      <ArticleFormFields
-                        formState={articleEditFormState}
-                        onInputChange={handleEditFormInputChange}
-                        galleryUrlDraftCatalog={editGalleryUrlDraftCatalog}
-                        onGalleryUrlDraftCatalogChange={setEditGalleryUrlDraftCatalog}
-                        submitLabel="Salvar alterações"
-                        onCancelClick={handleCancelEditClick}
+              {adminArticleCatalog.map((articleData, articleIndex) => {
+                const sourceIndex = dragSourceIndexRef.current
+                const isDragActive = sourceIndex !== null
+                const isSource = sourceIndex === articleIndex
+                const showPlaceholderBefore =
+                  isDragActive && dragOverIndex === articleIndex && sourceIndex > articleIndex
+                const showPlaceholderAfter =
+                  isDragActive && dragOverIndex === articleIndex && sourceIndex < articleIndex
+
+                return (
+                  <Fragment key={articleData.id}>
+                    {showPlaceholderBefore && (
+                      <li
+                        aria-hidden="true"
+                        className="pointer-events-none h-20 animate-pulse rounded-xl border-4 border-dashed border-pastelMint bg-pastelMint/30"
                       />
-                    </form>
-                  ) : (
-                    <>
-                      <header className="flex flex-wrap items-center justify-between gap-3">
-                        <div className="flex items-center gap-3">
-                          <FaGripVertical
-                            className="shrink-0 text-inkBlack/30"
-                            aria-hidden="true"
-                            title="Arraste para reordenar"
-                          />
-                          <div>
-                            <h3 className="text-lg font-display text-inkBlack">{articleData.title}</h3>
-                            <p className="text-xs font-bold uppercase tracking-wider text-inkBlack/70">
-                              {articleData.subtitle}
-                            </p>
-                          </div>
+                    )}
+                  <li
+                    draggable
+                    onDragStart={(event) => handleDragStart(event, articleIndex)}
+                    onDragOver={(event) => handleDragOver(event, articleIndex)}
+                    onDragEnd={handleDragEnd}
+                    onDrop={(event) => handleDrop(event, articleIndex)}
+                    className={[
+                      'cute-box cursor-grab bg-paperWhite p-4 transition-all duration-200 active:cursor-grabbing',
+                      isSource ? 'opacity-30 scale-95' : '',
+                    ].join(' ')}
+                  >
+                    <header className="flex flex-wrap items-center justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        <FaGripVertical
+                          className="shrink-0 text-inkBlack/30"
+                          aria-hidden="true"
+                          title="Arraste para reordenar"
+                        />
+                        <div>
+                          <h3 className="text-lg font-display text-inkBlack">{articleData.title}</h3>
+                          <p className="text-xs font-bold uppercase tracking-wider text-inkBlack/70">
+                            {articleData.subtitle}
+                          </p>
                         </div>
-                        <div className="flex items-center gap-2">
-                          {articleData.galleryImageUrls?.length > 0 && (
-                            <span className="rounded-lg border-2 border-inkBlack bg-pastelBlue px-2 py-1 text-xs font-black uppercase">
-                              {articleData.galleryImageUrls.length} foto
-                              {articleData.galleryImageUrls.length !== 1 ? 's' : ''}
-                            </span>
-                          )}
-                          <span className="rounded-lg border-2 border-inkBlack bg-pastelYellow px-2 py-1 text-xs font-black uppercase">
-                            {articleData.isPublished ? 'Publicado' : 'Oculto'}
-                          </span>
-                        </div>
-                      </header>
-                      <div className="mt-4 flex flex-wrap gap-2">
-                        <button
-                          type="button"
-                          className="cute-button flex h-10 items-center justify-center gap-1 bg-pastelYellow px-4 py-1 text-xs"
-                          onClick={() => handleEditArticleClick(articleData)}
-                        >
-                          <FaEdit aria-hidden="true" />
-                          <span>Editar</span>
-                        </button>
-                        <button
-                          type="button"
-                          className="cute-button h-10 bg-pastelMint px-4 py-1 text-xs"
-                          onClick={() => handleArticleVisibilityToggle(articleData.id)}
-                        >
-                          {articleData.isPublished ? 'Ocultar' : 'Publicar'}
-                        </button>
-                        <button
-                          type="button"
-                          className="cute-button flex h-10 items-center justify-center gap-1 bg-pastelPink px-4 py-1 text-xs"
-                          onClick={() => handleArticleDeletion(articleData.id)}
-                        >
-                          <FaTrash aria-hidden="true" />
-                          <span>Excluir</span>
-                        </button>
                       </div>
-                    </>
-                  )}
-                </li>
-              ))}
+                      <div className="flex items-center gap-2">
+                        {articleData.galleryImageUrls?.length > 0 && (
+                          <span className="rounded-lg border-2 border-inkBlack bg-pastelBlue px-2 py-1 text-xs font-black uppercase">
+                            {articleData.galleryImageUrls.length} foto
+                            {articleData.galleryImageUrls.length !== 1 ? 's' : ''}
+                          </span>
+                        )}
+                        <span className="rounded-lg border-2 border-inkBlack bg-pastelYellow px-2 py-1 text-xs font-black uppercase">
+                          {articleData.isPublished ? 'Publicado' : 'Oculto'}
+                        </span>
+                      </div>
+                    </header>
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        className="cute-button flex h-10 items-center justify-center gap-1 bg-pastelYellow px-4 py-1 text-xs"
+                        onClick={() => handleEditArticleClick(articleData)}
+                      >
+                        <FaEdit aria-hidden="true" />
+                        <span>Editar</span>
+                      </button>
+                      <button
+                        type="button"
+                        className="cute-button h-10 bg-pastelMint px-4 py-1 text-xs"
+                        onClick={() => handleArticleVisibilityToggle(articleData.id)}
+                      >
+                        {articleData.isPublished ? 'Ocultar' : 'Publicar'}
+                      </button>
+                      <button
+                        type="button"
+                        className="cute-button flex h-10 items-center justify-center gap-1 bg-pastelPink px-4 py-1 text-xs"
+                        onClick={() => handleArticleDeletion(articleData.id)}
+                      >
+                        <FaTrash aria-hidden="true" />
+                        <span>Excluir</span>
+                      </button>
+                    </div>
+                  </li>                    {showPlaceholderAfter && (
+                      <li
+                        aria-hidden="true"
+                        className="pointer-events-none h-20 animate-pulse rounded-xl border-4 border-dashed border-pastelMint bg-pastelMint/30"
+                      />
+                    )}
+                  </Fragment>                )
+              })}
             </ul>
           </article>
         </section>
+      )}
+
+      {isArticleModalOpen && (
+        <div
+          className="fixed inset-0 z-50 overflow-y-auto bg-inkBlack/80 px-4 py-10 backdrop-blur-sm"
+          onClick={handleCloseArticleModal}
+          aria-modal="true"
+          role="dialog"
+          aria-label={editingArticleIdentifier ? 'Editar artigo' : 'Novo artigo'}
+        >
+          <article
+            className="relative mx-auto w-full max-w-2xl rounded-xl border-4 border-inkBlack bg-paperWhite p-6 sm:p-8"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <button
+              type="button"
+              className="cute-control-button cute-control-button-close absolute right-4 top-4 z-10 flex h-10 w-10 items-center justify-center text-xl font-black"
+              onClick={handleCloseArticleModal}
+              aria-label="Fechar modal"
+            >
+              ×
+            </button>
+
+            <h2 className="mb-6 text-2xl font-display text-inkBlack">
+              {editingArticleIdentifier ? 'Editar artigo' : 'Novo artigo'}
+            </h2>
+
+            {editingArticleIdentifier ? (
+              <form onSubmit={handleArticleEditSubmission}>
+                <ArticleFormFields
+                  formState={articleEditFormState}
+                  onInputChange={handleEditFormInputChange}
+                  galleryUrlDraftCatalog={editGalleryUrlDraftCatalog}
+                  onGalleryUrlDraftCatalogChange={setEditGalleryUrlDraftCatalog}
+                  submitLabel="Salvar alterações"
+                  onCancelClick={handleCancelEditClick}
+                />
+              </form>
+            ) : (
+              <form onSubmit={handleArticleCreationSubmission}>
+                <ArticleFormFields
+                  formState={articleCreationFormState}
+                  onInputChange={handleCreationFormInputChange}
+                  galleryUrlDraftCatalog={creationGalleryUrlDraftCatalog}
+                  onGalleryUrlDraftCatalogChange={setCreationGalleryUrlDraftCatalog}
+                  submitLabel="Publicar artigo"
+                  onCancelClick={handleCloseArticleModal}
+                />
+              </form>
+            )}
+
+            {articleFeedbackMessage ? (
+              <p className="cute-box mt-4 bg-paperWhite px-4 py-3 text-sm font-black text-inkBlack" role="status">
+                {articleFeedbackMessage}
+              </p>
+            ) : null}
+          </article>
+        </div>
       )}
     </main>
   )

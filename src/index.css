@@ -54,6 +54,6 @@
   }
 
   .cute-input {
-    @apply rounded-xl border-4 border-inkBlack bg-paperWhite px-4 py-3 font-bold text-inkBlack outline-none transition-transform focus:-translate-y-1 focus:shadow-[4px_4px_0px_0px_#111111];
+    @apply min-w-0 rounded-xl border-4 border-inkBlack bg-paperWhite px-4 py-3 font-bold text-inkBlack outline-none transition-transform focus:-translate-y-1 focus:shadow-[4px_4px_0px_0px_#111111];
   }
 }

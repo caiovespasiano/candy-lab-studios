@@ -148,18 +148,21 @@ function App() {
   function handleProjectLikeClick(projectIdentifier) {
     const hasProjectAlreadyBeenLikedInCurrentSession = likedProjectIdentifierSet.has(projectIdentifier)
 
-    if (hasProjectAlreadyBeenLikedInCurrentSession) {
-      return
-    }
-
     setProjectLikeCountByIdentifier((currentProjectLikeCountByIdentifier) => {
-      const nextLikeCount = (currentProjectLikeCountByIdentifier[projectIdentifier] ?? 0) + 1
-      return { ...currentProjectLikeCountByIdentifier, [projectIdentifier]: nextLikeCount }
+      const currentCount = currentProjectLikeCountByIdentifier[projectIdentifier] ?? 0
+      const nextCount = hasProjectAlreadyBeenLikedInCurrentSession
+        ? Math.max(0, currentCount - 1)
+        : currentCount + 1
+      return { ...currentProjectLikeCountByIdentifier, [projectIdentifier]: nextCount }
     })
 
     setLikedProjectIdentifierSet((currentLikedProjectIdentifierSet) => {
       const nextLikedProjectIdentifierSet = new Set(currentLikedProjectIdentifierSet)
-      nextLikedProjectIdentifierSet.add(projectIdentifier)
+      if (hasProjectAlreadyBeenLikedInCurrentSession) {
+        nextLikedProjectIdentifierSet.delete(projectIdentifier)
+      } else {
+        nextLikedProjectIdentifierSet.add(projectIdentifier)
+      }
       return nextLikedProjectIdentifierSet
     })
   }
@@ -308,13 +311,14 @@ function App() {
         </section>
       </header>
 
-      <main className="mt-16 space-y-16 sm:mt-24">
-        <section id="portfolio" aria-labelledby="portfolioSectionHeading" className="cute-box mx-auto max-w-screen-xl px-4 py-8 sm:px-8 lg:px-12 lg:py-12 bg-pastelBlue mb-16 border-4 border-white">
-          <div className="mb-12 text-center bg-paperWhite cute-box inline-block px-10 py-6">
+      <main className="mt-16 space-y-16 sm:mt-12">
+        <div className="flex justify-center mb-12">
+          <div className="text-center bg-paperWhite cute-box inline-block px-10 py-6">
             <h2 id="portfolioSectionHeading" className="text-4xl sm:text-5xl font-display text-inkBlack drop-shadow-[2px_2px_0px_#ffffff]">3D Assets</h2>
             <p className="mt-3 text-sm font-black tracking-widest uppercase text-inkBlack/80">Projetos UGC em destaque</p>
           </div>
-
+        </div>
+        <section id="portfolio" aria-labelledby="portfolioSectionHeading" className="cute-box mx-auto max-w-screen-xl px-4 py-8 sm:px-8 lg:px-12 lg:py-12 bg-pastelBlue mb-16 border-4 border-white">
           <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-3">
             {publishedArticleCatalog.map((projectData) => (
               <article key={projectData.id} className="group flex flex-col items-center">
@@ -354,11 +358,17 @@ function App() {
           </div>
         </section>
 
+        <div className="flex justify-center mb-12">
+          <div className="text-center bg-paperWhite cute-box inline-block px-10 py-6">
+            <h2 id="portfolioSectionHeading" className="text-4xl sm:text-5xl font-display text-inkBlack drop-shadow-[2px_2px_0px_#ffffff]">Contato</h2>
+          </div>
+        </div>
+
         <section aria-labelledby="socialSectionHeading" className="cute-box mx-auto grid max-w-screen-xl px-4 py-8 sm:px-8 lg:px-12 lg:py-12 gap-10 bg-pastelYellow lg:grid-cols-2">
+          
           <article className="flex flex-col justify-center space-y-8">
             <div>
-              <p className="cute-box inline-block bg-paperWhite px-4 py-2 text-xs font-black uppercase tracking-wider shadow-none">Vamos conversar</p>
-              <h2 id="socialSectionHeading" className="mt-6 text-4xl font-display text-inkBlack drop-shadow-[2px_2px_0px_#ffffff]">Pronto para o próximo asset 3D?</h2>
+              <h2 id="socialSectionHeading" className="text-4xl font-display text-inkBlack drop-shadow-[2px_2px_0px_#ffffff]">Pronto para o próximo asset 3D?</h2>
             </div>
             <p className="text-base font-bold leading-relaxed text-inkBlack/80">
               Parcerias para criação de assets, itens UGC e direção visual para builds no Roblox.
@@ -436,8 +446,8 @@ function App() {
         </section>
       </main>
 
-      <footer className="mt-16 flex flex-col items-center justify-center gap-4 pb-10 text-center">
-        <span className="cute-box bg-paperWhite px-6 py-2 text-xs font-black uppercase tracking-wider shadow-none">© 2026 Candy Lab Studios</span>
+      <footer className="mt-16 flex flex-col items-center gap-4 pb-10">
+        <span className="cute-box mx-auto block w-full max-w-screen-xl px-4 py-2 text-center text-xs font-black uppercase tracking-wider shadow-none sm:px-8 lg:px-12">© 2026 Candy Lab Studios</span>
         <a
           href={globalAdminAccessConfig.adminRouteHash}
           className="text-[10px] font-bold uppercase tracking-widest text-inkBlack/60 hover:text-inkBlack"
@@ -459,7 +469,7 @@ function App() {
           >
             <button
               type="button"
-              className="cute-control-button cute-control-button-close absolute right-4 top-4 z-10 flex h-10 w-10 items-center justify-center bg-paperWhite text-xl font-black"
+              className="cute-control-button cute-control-button-close absolute right-4 top-4 z-10 flex h-10 w-10 items-center justify-center text-xl font-black"
               onClick={() => setSelectedProjectIdentifier(null)}
               aria-label="Fechar modal"
             >
@@ -479,7 +489,7 @@ function App() {
                       <button
                         type="button"
                         onClick={handleNavigateGalleryLeft}
-                        className="cute-control-button absolute left-2 top-1/2 z-10 flex h-12 w-12 -translate-y-1/2 items-center justify-center border-2 border-white"
+                        className="cute-control-button absolute left-2 top-1/2 z-10 flex h-12 w-12 -translate-y-1/2 items-center justify-center border-2 border-white bg-pastelYellow hover:bg-[#f5d060]"
                         aria-label="Imagem anterior"
                       >
                         <FaArrowLeft aria-hidden="true" />
@@ -487,7 +497,7 @@ function App() {
                       <button
                         type="button"
                         onClick={handleNavigateGalleryRight}
-                        className="cute-control-button absolute right-2 top-1/2 z-10 flex h-12 w-12 -translate-y-1/2 items-center justify-center border-2 border-white"
+                        className="cute-control-button absolute right-2 top-1/2 z-10 flex h-12 w-12 -translate-y-1/2 items-center justify-center border-2 border-white bg-pastelYellow hover:bg-[#f5d060]"
                         aria-label="Próxima imagem"
                       >
                         <FaArrowRight aria-hidden="true" />
@@ -524,9 +534,12 @@ function App() {
                 <button
                   type="button"
                   onClick={() => handleProjectLikeClick(selectedProjectData.id)}
-                  disabled={hasSelectedProjectBeenLiked}
-                  className="cute-control-button flex h-12 w-12 items-center justify-center border-2 border-inkBlack bg-paperWhite text-2xl disabled:opacity-100"
-                  aria-label="Amei"
+                  className={`cute-control-button flex h-12 w-12 items-center justify-center border-2 border-inkBlack text-2xl ${
+                    hasSelectedProjectBeenLiked
+                      ? 'bg-pastelPink hover:bg-[#f09490]'
+                      : '!bg-paperWhite hover:!bg-pastelBlue'
+                  }`}
+                  aria-label={hasSelectedProjectBeenLiked ? 'Remover curtida' : 'Curtir'}
                 >
                   {hasSelectedProjectBeenLiked ? <FaHeart className="text-red-600" aria-hidden="true" /> : <FaRegHeart className="text-inkBlack" aria-hidden="true" />}
                 </button>

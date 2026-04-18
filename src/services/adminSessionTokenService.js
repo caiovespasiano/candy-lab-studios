@@ -22,15 +22,24 @@ function convertBase64UrlToText(base64UrlValue) {
   return new TextDecoder().decode(utf8Bytes)
 }
 
-function createDeterministicSignature(unsignedTokenValue, secretValue) {
-  const signatureSeed = `${unsignedTokenValue}.${secretValue}`
-  let hashAccumulator = 5381
+async function createHmacSha256Signature(unsignedToken, secret) {
+  const encoder = new TextEncoder()
+  const cryptoKey = await crypto.subtle.importKey(
+    'raw',
+    encoder.encode(secret),
+    { name: 'HMAC', hash: { name: 'SHA-256' } },
+    false,
+    ['sign']
+  )
+  const signatureBuffer = await crypto.subtle.sign('HMAC', cryptoKey, encoder.encode(unsignedToken))
+  const signatureBytes = new Uint8Array(signatureBuffer)
+  const binaryString = Array.from(signatureBytes, (byte) => String.fromCharCode(byte)).join('')
+  return btoa(binaryString).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
+}
 
-  for (let characterIndex = 0; characterIndex < signatureSeed.length; characterIndex += 1) {
-    hashAccumulator = (hashAccumulator * 33) ^ signatureSeed.charCodeAt(characterIndex)
-  }
-
-  return convertTextToBase64Url(String(hashAccumulator >>> 0))
+async function verifyHmacSha256Signature(unsignedToken, secret, expectedSignature) {
+  const recomputed = await createHmacSha256Signature(unsignedToken, secret)
+  return recomputed === expectedSignature
 }
 
 function resolveSessionSecretFromEnvironment() {
@@ -38,7 +47,7 @@ function resolveSessionSecretFromEnvironment() {
   return environmentSecret || globalFallbackSecret
 }
 
-export function createAdminSessionToken(adminIdentityData, nowTimestampProvider = Date.now) {
+export async function createAdminSessionToken(adminIdentityData, nowTimestampProvider = Date.now) {
   const issuedAtInSeconds = Math.floor(nowTimestampProvider() / 1000)
   const expiresInSeconds = globalAdminAccessConfig.adminSessionDurationInMinutes * 60
   const expirationInSeconds = issuedAtInSeconds + expiresInSeconds
@@ -52,12 +61,12 @@ export function createAdminSessionToken(adminIdentityData, nowTimestampProvider 
   const encodedHeader = convertTextToBase64Url(JSON.stringify(globalTokenHeader))
   const encodedPayload = convertTextToBase64Url(JSON.stringify(tokenPayload))
   const unsignedTokenValue = `${encodedHeader}.${encodedPayload}`
-  const tokenSignature = createDeterministicSignature(unsignedTokenValue, resolveSessionSecretFromEnvironment())
+  const tokenSignature = await createHmacSha256Signature(unsignedTokenValue, resolveSessionSecretFromEnvironment())
 
   return `${unsignedTokenValue}.${tokenSignature}`
 }
 
-export function parseAndValidateAdminSessionToken(rawSessionToken, nowTimestampProvider = Date.now) {
+export async function parseAndValidateAdminSessionToken(rawSessionToken, nowTimestampProvider = Date.now) {
   try {
     const tokenParts = String(rawSessionToken || '').split('.')
 
@@ -67,9 +76,13 @@ export function parseAndValidateAdminSessionToken(rawSessionToken, nowTimestampP
 
     const [encodedHeader, encodedPayload, signatureValue] = tokenParts
     const unsignedTokenValue = `${encodedHeader}.${encodedPayload}`
-    const expectedSignature = createDeterministicSignature(unsignedTokenValue, resolveSessionSecretFromEnvironment())
+    const isSignatureValid = await verifyHmacSha256Signature(
+      unsignedTokenValue,
+      resolveSessionSecretFromEnvironment(),
+      signatureValue
+    )
 
-    if (signatureValue !== expectedSignature) {
+    if (!isSignatureValid) {
       return { isValid: false, reason: 'assinatura-invalida' }
     }
 

@@ -5,34 +5,34 @@ import {
 } from '../services/adminSessionTokenService'
 
 describe('adminSessionTokenService', () => {
-  test('whenTokenIsGeneratedThenValidationReturnsAuthenticatedSessionData', () => {
+  test('whenTokenIsGeneratedThenValidationReturnsAuthenticatedSessionData', async () => {
     const nowTimestampValue = 1_700_000_000_000
-    const sessionToken = createAdminSessionToken({ username: 'admin' }, () => nowTimestampValue)
+    const sessionToken = await createAdminSessionToken({ username: 'admin' }, () => nowTimestampValue)
 
-    const validationResult = parseAndValidateAdminSessionToken(sessionToken, () => nowTimestampValue)
+    const validationResult = await parseAndValidateAdminSessionToken(sessionToken, () => nowTimestampValue)
 
     expect(validationResult.isValid).toBe(true)
     expect(validationResult.sessionData.username).toBe('admin')
     expect(validationResult.sessionData.expiresAtInSeconds).toBeGreaterThan(0)
   })
 
-  test('whenTokenIsExpiredThenValidationReturnsInvalidState', () => {
+  test('whenTokenIsExpiredThenValidationReturnsInvalidState', async () => {
     const nowTimestampValue = 1_700_000_000_000
-    const sessionToken = createAdminSessionToken({ username: 'admin' }, () => nowTimestampValue)
+    const sessionToken = await createAdminSessionToken({ username: 'admin' }, () => nowTimestampValue)
     const futureTimestampValue = nowTimestampValue + 3_600_000
 
-    const validationResult = parseAndValidateAdminSessionToken(sessionToken, () => futureTimestampValue)
+    const validationResult = await parseAndValidateAdminSessionToken(sessionToken, () => futureTimestampValue)
 
     expect(validationResult.isValid).toBe(false)
     expect(validationResult.reason).toBe('token-expirado')
   })
 
-  test('whenTokenHasInvalidSignatureThenValidationRejectsSession', () => {
-    const sessionToken = createAdminSessionToken({ username: 'admin' }, () => 1_700_000_000_000)
+  test('whenTokenHasInvalidSignatureThenValidationRejectsSession', async () => {
+    const sessionToken = await createAdminSessionToken({ username: 'admin' }, () => 1_700_000_000_000)
     const [headerPart, payloadPart] = sessionToken.split('.')
     const tamperedToken = `${headerPart}.${payloadPart}.assinatura-invalida`
 
-    const validationResult = parseAndValidateAdminSessionToken(tamperedToken)
+    const validationResult = await parseAndValidateAdminSessionToken(tamperedToken)
 
     expect(validationResult.isValid).toBe(false)
     expect(validationResult.reason).toBe('assinatura-invalida')

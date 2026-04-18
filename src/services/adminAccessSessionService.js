@@ -15,7 +15,7 @@ export function clearPersistedAdminSessionToken(storageClient) {
   storage.removeItem(globalAdminAccessConfig.adminSessionStorageKey)
 }
 
-export function restoreValidAdminSessionData(storageClient, nowTimestampProvider = Date.now) {
+export async function restoreValidAdminSessionData(storageClient, nowTimestampProvider = Date.now) {
   const storage = resolveStorage(storageClient)
   const persistedToken = storage.getItem(globalAdminAccessConfig.adminSessionStorageKey)
 
@@ -23,7 +23,7 @@ export function restoreValidAdminSessionData(storageClient, nowTimestampProvider
     return { isAuthenticated: false }
   }
 
-  const tokenValidationResult = parseAndValidateAdminSessionToken(persistedToken, nowTimestampProvider)
+  const tokenValidationResult = await parseAndValidateAdminSessionToken(persistedToken, nowTimestampProvider)
 
   if (!tokenValidationResult.isValid) {
     clearPersistedAdminSessionToken(storage)
