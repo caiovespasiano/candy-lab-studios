@@ -20,21 +20,106 @@ const globalAllowedUploadMimeTypeSet = new Set([
   'image/avif',
 ])
 
+const globalFileExtensionByUploadMimeType = {
+  'image/jpeg': 'jpg',
+  'image/png': 'png',
+  'image/gif': 'gif',
+  'image/webp': 'webp',
+  'image/avif': 'avif',
+}
+
 const globalCurrentFilePath = fileURLToPath(import.meta.url)
 const globalServerDirectoryPath = path.dirname(globalCurrentFilePath)
 const globalProjectRootDirectoryPath = path.resolve(globalServerDirectoryPath, '..')
 
 const globalProjectDataDirectoryPath = path.resolve(globalProjectRootDirectoryPath, 'data')
 const globalProjectArticlesFilePath = path.resolve(globalProjectDataDirectoryPath, 'articles.json')
+const globalProjectPreferencesFilePath = path.resolve(globalProjectDataDirectoryPath, 'projectPreferences.json')
+const globalProjectContactSubmissionsFilePath = path.resolve(globalProjectDataDirectoryPath, 'contactSubmissions.json')
 const globalPublicUploadsDirectoryPath = path.resolve(globalProjectRootDirectoryPath, 'public', 'uploads')
 const globalDistributionDirectoryPath = path.resolve(globalProjectRootDirectoryPath, 'dist')
+const globalAllowedUploadFileExtensionCatalog = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.avif']
+const globalHexColorPattern = /^#[0-9a-fA-F]{6}$/
+const globalFallbackBackgroundColor = '#ffffff'
+const globalFallbackBackgroundImageUrl = ''
+const globalFallbackYellowThemeColor = '#ffdf85'
+const globalMaxEmailLength = 320
+const globalMaxContactMessageLength = 4000
+const globalMaxContactSubmissionsStored = 2000
+const globalEmailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
+function isPathInsideParent(parentPath, targetPath) {
+  const relativePath = path.relative(parentPath, targetPath)
+  return relativePath.length > 0 && !relativePath.startsWith('..') && !path.isAbsolute(relativePath)
+}
 
 function sanitizeTextValue(rawValue, maxLength = globalMaxTextLength) {
   return String(rawValue || '').replace(/[<>]/g, '').trim().slice(0, maxLength)
 }
 
+function decodeCommonHtmlEntities(rawTextValue) {
+  return String(rawTextValue || '')
+    .replaceAll('&amp;', '&')
+    .replaceAll('&lt;', '<')
+    .replaceAll('&gt;', '>')
+    .replaceAll('&quot;', '"')
+    .replaceAll('&#39;', "'")
+    .replaceAll('&#96;', '`')
+}
+
 function sanitizeUrlValue(rawValue) {
-  return String(rawValue || '').trim().slice(0, globalMaxUrlLength)
+  return decodeCommonHtmlEntities(String(rawValue || '').trim()).slice(0, globalMaxUrlLength)
+}
+
+function sanitizeBackgroundImageUrl(rawValue) {
+  const normalizedUrlValue = sanitizeUrlValue(rawValue)
+
+  if (!normalizedUrlValue) {
+    return globalFallbackBackgroundImageUrl
+  }
+
+  if (normalizedUrlValue.startsWith('/')) {
+    return normalizedUrlValue
+  }
+
+  try {
+    const absoluteUrl = new URL(normalizedUrlValue)
+    const isSupportedProtocol = ['http:', 'https:'].includes(absoluteUrl.protocol)
+    return isSupportedProtocol ? normalizedUrlValue : globalFallbackBackgroundImageUrl
+  } catch {
+    return globalFallbackBackgroundImageUrl
+  }
+}
+
+function sanitizeHexColor(rawHexColor, fallbackHexColor) {
+  const normalizedHexColor = String(rawHexColor || '').trim()
+  return globalHexColorPattern.test(normalizedHexColor) ? normalizedHexColor : fallbackHexColor
+}
+
+function createDefaultProjectPreferencesForPersistence() {
+  return {
+    backgroundHexColor: globalFallbackBackgroundColor,
+    backgroundImageUrl: globalFallbackBackgroundImageUrl,
+    yellowThemeHexColor: globalFallbackYellowThemeColor,
+  }
+}
+
+function normalizeProjectPreferencesForPersistence(projectPreferences) {
+  const normalizedProjectPreferences = projectPreferences && typeof projectPreferences === 'object'
+    ? projectPreferences
+    : {}
+
+  return {
+    backgroundHexColor: sanitizeHexColor(
+      normalizedProjectPreferences.backgroundHexColor,
+      globalFallbackBackgroundColor
+    ),
+    backgroundImageUrl: sanitizeBackgroundImageUrl(normalizedProjectPreferences.backgroundImageUrl),
+    yellowThemeHexColor: sanitizeHexColor(
+      normalizedProjectPreferences.yellowThemeHexColor,
+      globalFallbackYellowThemeColor
+    ),
+  }
 }
 
 function sanitizeGalleryUrlCatalog(galleryUrlCatalog) {
@@ -46,6 +131,11 @@ function sanitizeGalleryUrlCatalog(galleryUrlCatalog) {
     .slice(0, globalMaxGalleryImagesPerArticle)
     .map((urlValue) => sanitizeUrlValue(urlValue))
     .filter((urlValue) => urlValue.length > 0)
+}
+
+function normalizeRobuxPrice(rawRobuxPrice) {
+  const normalizedRobuxPrice = Number(rawRobuxPrice)
+  return Number.isInteger(normalizedRobuxPrice) && normalizedRobuxPrice >= 0 ? normalizedRobuxPrice : 0
 }
 
 function validateArticleCatalogPayload(articleCatalog) {
@@ -73,6 +163,7 @@ function createSeedArticleCatalogForPersistence() {
       imageAlternativeText: sanitizeTextValue(articleData.imageAlternativeText || articleData.title),
       galleryImageUrls: sanitizeGalleryUrlCatalog(articleData.galleryImageUrls),
       likeCount: Number.isInteger(articleData.likeCount) ? articleData.likeCount : 0,
+      robuxPrice: normalizeRobuxPrice(articleData.robuxPrice),
       isPublished: true,
       orderIndex: articleIndex,
       publishedAtIso: new Date().toISOString(),
@@ -97,6 +188,7 @@ function normalizeArticleCatalogForPersistence(articleCatalog) {
       imageAlternativeText: sanitizeTextValue(articleData.imageAlternativeText || articleData.title),
       galleryImageUrls: sanitizeGalleryUrlCatalog(articleData.galleryImageUrls),
       likeCount: Number.isInteger(articleData.likeCount) && articleData.likeCount >= 0 ? articleData.likeCount : 0,
+      robuxPrice: normalizeRobuxPrice(articleData.robuxPrice),
       isPublished: Boolean(articleData.isPublished),
       orderIndex: articleIndex,
       publishedAtIso: String(articleData.publishedAtIso || new Date().toISOString()),
@@ -115,6 +207,75 @@ async function ensureArticlesFileExists() {
     const seedArticleCatalog = createSeedArticleCatalogForPersistence()
     await fs.promises.writeFile(globalProjectArticlesFilePath, JSON.stringify(seedArticleCatalog, null, 2), 'utf-8')
   }
+}
+
+async function ensureProjectPreferencesFileExists() {
+  await ensureDirectoryExists(globalProjectDataDirectoryPath)
+
+  if (!fs.existsSync(globalProjectPreferencesFilePath)) {
+    const defaultProjectPreferences = createDefaultProjectPreferencesForPersistence()
+    await fs.promises.writeFile(globalProjectPreferencesFilePath, JSON.stringify(defaultProjectPreferences, null, 2), 'utf-8')
+  }
+}
+
+async function ensureContactSubmissionsFileExists() {
+  await ensureDirectoryExists(globalProjectDataDirectoryPath)
+
+  if (!fs.existsSync(globalProjectContactSubmissionsFilePath)) {
+    await fs.promises.writeFile(globalProjectContactSubmissionsFilePath, JSON.stringify([], null, 2), 'utf-8')
+  }
+}
+
+function normalizeContactSubmissionForPersistence(contactSubmission) {
+  const normalizedContactSubmission = contactSubmission && typeof contactSubmission === 'object'
+    ? contactSubmission
+    : {}
+
+  return {
+    id: `contact-${Date.now()}-${randomUUID().slice(0, 8)}`,
+    fullName: sanitizeTextValue(normalizedContactSubmission.fullName),
+    emailAddress: sanitizeTextValue(normalizedContactSubmission.emailAddress, globalMaxEmailLength),
+    messageBody: sanitizeTextValue(normalizedContactSubmission.messageBody, globalMaxContactMessageLength),
+    submittedAtIso: new Date().toISOString(),
+  }
+}
+
+function validateContactSubmissionPayload(contactSubmission) {
+  const normalizedContactSubmission = contactSubmission && typeof contactSubmission === 'object'
+    ? contactSubmission
+    : {}
+
+  const sanitizedFullName = sanitizeTextValue(normalizedContactSubmission.fullName)
+  const sanitizedEmailAddress = sanitizeTextValue(normalizedContactSubmission.emailAddress, globalMaxEmailLength)
+  const sanitizedMessageBody = sanitizeTextValue(normalizedContactSubmission.messageBody, globalMaxContactMessageLength)
+
+  if (sanitizedFullName.length < 2) {
+    const validationError = new Error('Nome invalido para envio de contato.')
+    validationError.statusCode = 422
+    throw validationError
+  }
+
+  if (!globalEmailPattern.test(sanitizedEmailAddress)) {
+    const validationError = new Error('Email invalido para envio de contato.')
+    validationError.statusCode = 422
+    throw validationError
+  }
+
+  if (sanitizedMessageBody.length < 5) {
+    const validationError = new Error('Mensagem invalida para envio de contato.')
+    validationError.statusCode = 422
+    throw validationError
+  }
+}
+
+function normalizeContactSubmissionCatalogForPersistence(contactSubmissionCatalog) {
+  if (!Array.isArray(contactSubmissionCatalog)) {
+    return []
+  }
+
+  return contactSubmissionCatalog
+    .map((contactSubmission) => normalizeContactSubmissionForPersistence(contactSubmission))
+    .slice(-globalMaxContactSubmissionsStored)
 }
 
 export async function loadProjectArticleCatalogFromDisk() {
@@ -136,6 +297,56 @@ export async function persistProjectArticleCatalogOnDisk(articleCatalog) {
   const normalizedArticleCatalog = normalizeArticleCatalogForPersistence(articleCatalog)
   await fs.promises.writeFile(globalProjectArticlesFilePath, JSON.stringify(normalizedArticleCatalog, null, 2), 'utf-8')
   return normalizedArticleCatalog
+}
+
+export async function loadProjectPreferencesFromDisk() {
+  await ensureProjectPreferencesFileExists()
+
+  try {
+    const projectPreferencesText = await fs.promises.readFile(globalProjectPreferencesFilePath, 'utf-8')
+    const parsedProjectPreferences = JSON.parse(projectPreferencesText)
+    return normalizeProjectPreferencesForPersistence(parsedProjectPreferences)
+  } catch {
+    const defaultProjectPreferences = createDefaultProjectPreferencesForPersistence()
+    await fs.promises.writeFile(globalProjectPreferencesFilePath, JSON.stringify(defaultProjectPreferences, null, 2), 'utf-8')
+    return defaultProjectPreferences
+  }
+}
+
+export async function persistProjectPreferencesOnDisk(projectPreferences) {
+  await ensureProjectPreferencesFileExists()
+  const normalizedProjectPreferences = normalizeProjectPreferencesForPersistence(projectPreferences)
+  await fs.promises.writeFile(globalProjectPreferencesFilePath, JSON.stringify(normalizedProjectPreferences, null, 2), 'utf-8')
+  return normalizedProjectPreferences
+}
+
+export async function persistContactSubmissionOnDisk(contactSubmission) {
+  await ensureContactSubmissionsFileExists()
+  validateContactSubmissionPayload(contactSubmission)
+
+  let currentContactSubmissionCatalog = []
+
+  try {
+    const persistedCatalogText = await fs.promises.readFile(globalProjectContactSubmissionsFilePath, 'utf-8')
+    const parsedCatalog = JSON.parse(persistedCatalogText)
+    currentContactSubmissionCatalog = normalizeContactSubmissionCatalogForPersistence(parsedCatalog)
+  } catch {
+    currentContactSubmissionCatalog = []
+  }
+
+  const normalizedContactSubmission = normalizeContactSubmissionForPersistence(contactSubmission)
+  const nextContactSubmissionCatalog = [
+    ...currentContactSubmissionCatalog,
+    normalizedContactSubmission,
+  ].slice(-globalMaxContactSubmissionsStored)
+
+  await fs.promises.writeFile(
+    globalProjectContactSubmissionsFilePath,
+    JSON.stringify(nextContactSubmissionCatalog, null, 2),
+    'utf-8'
+  )
+
+  return normalizedContactSubmission
 }
 
 function resolveJsonContentType(contentTypeHeader) {
@@ -218,6 +429,10 @@ function sanitizeFileNameSegment(rawValue) {
     .replace(/^-|-$/g, '')
 }
 
+function resolveFileExtensionByMimeType(mimeType) {
+  return globalFileExtensionByUploadMimeType[mimeType] || 'webp'
+}
+
 export async function persistUploadedImageDataUrl(imageDataUrl, sourceLabel) {
   const mimeType = extractMimeTypeFromDataUrl(imageDataUrl)
   if (!mimeType || !globalAllowedUploadMimeTypeSet.has(mimeType)) {
@@ -243,12 +458,70 @@ export async function persistUploadedImageDataUrl(imageDataUrl, sourceLabel) {
   await ensureDirectoryExists(globalPublicUploadsDirectoryPath)
 
   const safeSourceLabel = sanitizeFileNameSegment(sourceLabel) || 'upload'
-  const fileName = `${Date.now()}-${safeSourceLabel}-${randomUUID().slice(0, 8)}.webp`
+  const fileExtension = resolveFileExtensionByMimeType(mimeType)
+  const fileName = `${Date.now()}-${safeSourceLabel}-${randomUUID().slice(0, 8)}.${fileExtension}`
   const filePath = path.resolve(globalPublicUploadsDirectoryPath, fileName)
 
   await fs.promises.writeFile(filePath, imageBuffer)
 
   return `/uploads/${fileName}`
+}
+
+export async function deleteUploadedImageByUrl(imageUrl) {
+  const normalizedImageUrl = String(imageUrl || '').trim()
+
+  if (!normalizedImageUrl.startsWith('/uploads/')) {
+    const validationError = new Error('URL de imagem invalida para exclusao.')
+    validationError.statusCode = 422
+    throw validationError
+  }
+
+  const uploadRelativePath = normalizedImageUrl.replace(/^\/uploads\//, '')
+  const uploadFilePath = path.resolve(globalPublicUploadsDirectoryPath, uploadRelativePath)
+
+  const isUploadPathInsidePublicDirectory = isPathInsideParent(globalPublicUploadsDirectoryPath, uploadFilePath)
+    || uploadFilePath === globalPublicUploadsDirectoryPath
+
+  if (!isUploadPathInsidePublicDirectory) {
+    const forbiddenError = new Error('Caminho de imagem nao permitido para exclusao.')
+    forbiddenError.statusCode = 403
+    throw forbiddenError
+  }
+
+  if (!fs.existsSync(uploadFilePath)) {
+    return { isDeleted: false }
+  }
+
+  await fs.promises.unlink(uploadFilePath)
+  return { isDeleted: true }
+}
+
+export async function listUploadedImageUrlCatalog() {
+  await ensureDirectoryExists(globalPublicUploadsDirectoryPath)
+
+  const directoryEntryCatalog = await fs.promises.readdir(globalPublicUploadsDirectoryPath, { withFileTypes: true })
+
+  const uploadImageFileNameCatalog = directoryEntryCatalog
+    .filter((directoryEntry) => directoryEntry.isFile())
+    .map((directoryEntry) => directoryEntry.name)
+    .filter((fileName) => {
+      const fileExtension = path.extname(fileName).toLowerCase()
+      return globalAllowedUploadFileExtensionCatalog.includes(fileExtension)
+    })
+
+  const uploadImageDataCatalog = await Promise.all(uploadImageFileNameCatalog.map(async (fileName) => {
+    const filePath = path.resolve(globalPublicUploadsDirectoryPath, fileName)
+    const fileStats = await fs.promises.stat(filePath)
+
+    return {
+      imageUrl: `/uploads/${fileName}`,
+      modifiedTimeInMs: Number(fileStats.mtimeMs || 0),
+    }
+  }))
+
+  return uploadImageDataCatalog
+    .sort((leftImageData, rightImageData) => rightImageData.modifiedTimeInMs - leftImageData.modifiedTimeInMs)
+    .map((uploadImageData) => uploadImageData.imageUrl)
 }
 
 export function resolveProjectPersistencePaths() {

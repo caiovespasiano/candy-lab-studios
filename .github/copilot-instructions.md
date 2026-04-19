@@ -19,3 +19,5 @@ integralmente todas as convenções definidas nele.
 7. Sanitização total de entrada e prevenção de XSS.
 8. Mapeamento de HTTP com mensagens de erro sanitizadas.
 9. Testes unitários por função e integração apenas na etapa final.
+10. Toda feature que altere estado (criação, edição, remoção, upload, preferências e similares) deve persistir no projeto
+	via API/arquivo; não pode depender apenas de cache/localStorage/sessão do navegador.

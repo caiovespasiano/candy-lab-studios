@@ -12,6 +12,7 @@ export const globalPortfolioProjectCatalog = [
       'https://images.unsplash.com/photo-1547394765-185e1e68f34e?auto=format&fit=crop&w=1200&q=80',
     ],
     likeCount: 142,
+    robuxPrice: 450,
   },
   {
     id: 'festivalAvatarSet',
@@ -26,6 +27,7 @@ export const globalPortfolioProjectCatalog = [
       'https://images.unsplash.com/photo-1526498460520-4c246339dccb?auto=format&fit=crop&w=1200&q=80',
     ],
     likeCount: 98,
+    robuxPrice: 320,
   },
   {
     id: 'floatingTempleKit',
@@ -40,5 +42,6 @@ export const globalPortfolioProjectCatalog = [
       'https://images.unsplash.com/photo-1446776653964-20c1d3a81b06?auto=format&fit=crop&w=1200&q=80',
     ],
     likeCount: 76,
+    robuxPrice: 610,
   },
 ]
