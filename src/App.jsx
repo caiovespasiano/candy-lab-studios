@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useRef, useState } from 'react'
+﻿import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import {
   FaArrowLeft,
   FaArrowRight,
@@ -20,20 +20,39 @@ import { AdminAccessPanel } from './components/AdminAccessPanel'
 import { globalAdminAccessConfig } from './constants/globalAdminAccessConfig'
 import { globalArticlePublicationController } from './controllers/articles/globalArticlePublicationController'
 import {
+  applyGlobalBackgroundImageUrl,
   applyGlobalBackgroundHexColor,
+  applyGlobalYellowThemeHexColor,
+  loadPersistedGlobalBackgroundImageUrl,
   loadPersistedGlobalBackgroundHexColor,
+  loadPersistedGlobalYellowThemeHexColor,
+  persistGlobalBackgroundImageUrl,
+  persistGlobalBackgroundHexColor,
+  persistGlobalYellowThemeHexColor,
 } from './services/globalBackgroundPreferencesService'
 import { internalRuntimeStorage } from './services/internalRuntimeStorageService'
-import { loadPersistedArticleCatalogFromProject } from './services/projectPersistenceGatewayService'
+import { loadPersistedArticleCatalogFromProject, loadProjectPreferencesFromProject } from './services/projectPersistenceGatewayService'
 import { submitContactMessageUsingGateway } from './services/contactSubmissionService'
 import globalTranslationsByLanguageCode from './constants/i18n/translations.json'
 
-const globalInternalContactGatewayClient = {
+const globalProjectContactGatewayClient = {
   async sendContactMessage(sanitizedContactPayload) {
+    const contactApiResponse = await fetch('/api/contact', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      },
+      credentials: 'include',
+      body: JSON.stringify(sanitizedContactPayload),
+    })
+
+    const contactApiPayload = await contactApiResponse.json().catch(() => ({}))
+
     return {
-      statusCode: 201,
+      statusCode: Number(contactApiPayload.statusCode || contactApiResponse.status || 500),
       payload: {
-        message: `Mensagem recebida com sucesso de ${sanitizedContactPayload.fullName}.`,
+        message: String(contactApiPayload.message || 'Falha ao registrar mensagem de contato.'),
       },
     }
   },
@@ -279,6 +298,7 @@ function resolveImageDimensionsFromUrl(imageUrl) {
 function App() {
   const floatingCandyLayerReference = useRef(null)
   const languageMenuReference = useRef(null)
+  const syncManagedArticleCatalogReference = useRef(null)
   const [currentLanguageCode, setCurrentLanguageCode] = useState(resolveInitialLanguageCode)
   const [isLanguageMenuOpen, setIsLanguageMenuOpen] = useState(false)
   const [modalOpenAnimationOffset, setModalOpenAnimationOffset] = useState({ x: 0, y: 12 })
@@ -315,7 +335,7 @@ function App() {
   const hasSelectedProjectBeenLiked = selectedProjectData ? likedProjectIdentifierSet.has(selectedProjectData.id) : false
   const isAdminRouteActive = currentRouteHash === globalAdminAccessConfig.adminRouteHash
 
-  function syncManagedArticleCatalog(nextArticleCatalog) {
+  const syncManagedArticleCatalog = useCallback((nextArticleCatalog) => {
     setManagedArticleCatalog(nextArticleCatalog)
 
     setProjectLikeCountByIdentifier((currentProjectLikeCountByIdentifier) => {
@@ -337,7 +357,11 @@ function App() {
         [...currentLikedProjectIdentifierSet].filter((projectIdentifier) => availableProjectIdentifierSet.has(projectIdentifier))
       )
     })
-  }
+  }, [])
+
+  useEffect(() => {
+    syncManagedArticleCatalogReference.current = syncManagedArticleCatalog
+  }, [syncManagedArticleCatalog])
 
   function t(translationPath, replacementByKey) {
     return resolveTranslationText(currentLanguageCode, translationPath, replacementByKey)
@@ -355,9 +379,45 @@ function App() {
     }
   }, [])
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const persistedBackgroundHexColor = loadPersistedGlobalBackgroundHexColor()
+    const persistedBackgroundImageUrl = loadPersistedGlobalBackgroundImageUrl()
+    const persistedYellowThemeHexColor = loadPersistedGlobalYellowThemeHexColor()
+
     applyGlobalBackgroundHexColor(persistedBackgroundHexColor)
+    applyGlobalBackgroundImageUrl(persistedBackgroundImageUrl)
+    applyGlobalYellowThemeHexColor(persistedYellowThemeHexColor)
+  }, [])
+
+  useEffect(() => {
+    let isSubscriptionActive = true
+
+    async function restoreVisualPreferences() {
+      try {
+        const projectPreferencesResponse = await loadProjectPreferencesFromProject()
+
+        if (!isSubscriptionActive) {
+          return
+        }
+
+        const projectPreferences = projectPreferencesResponse.projectPreferences || {}
+        const persistedBackgroundHexColor = persistGlobalBackgroundHexColor(projectPreferences.backgroundHexColor)
+        const persistedBackgroundImageUrl = persistGlobalBackgroundImageUrl(projectPreferences.backgroundImageUrl)
+        const persistedYellowThemeHexColor = persistGlobalYellowThemeHexColor(projectPreferences.yellowThemeHexColor)
+
+        applyGlobalBackgroundHexColor(persistedBackgroundHexColor)
+        applyGlobalBackgroundImageUrl(persistedBackgroundImageUrl)
+        applyGlobalYellowThemeHexColor(persistedYellowThemeHexColor)
+      } catch {
+        // Local preferences were already applied in useLayoutEffect.
+      }
+    }
+
+    restoreVisualPreferences()
+
+    return () => {
+      isSubscriptionActive = false
+    }
   }, [])
 
   useEffect(() => {
@@ -376,7 +436,7 @@ function App() {
         )
 
         if (isSubscriptionActive) {
-          syncManagedArticleCatalog(syncResult.articleCatalog)
+          syncManagedArticleCatalogReference.current?.(syncResult.articleCatalog)
         }
       } catch {
         // Local API may be unavailable in some environments.
@@ -781,7 +841,7 @@ function App() {
 
     const contactServiceResponse = await submitContactMessageUsingGateway(
       contactFormState,
-      globalInternalContactGatewayClient,
+      globalProjectContactGatewayClient,
       'landing-contact-flow'
     )
 
@@ -986,21 +1046,26 @@ function App() {
                     alt={featuredProjectData.imageAlternativeText}
                     className="h-full w-full object-cover transition-transform duration-400 ease-out hover:scale-105"
                   />
-                
-                  <button
-                    type="button"
-                    onClick={(event) => {
-                      event.stopPropagation()
-                      handleOpenProjectModal(featuredProjectData.id, event.currentTarget)
-                    }}
-                    className="cute-button absolute right-4 top-4 flex h-12 w-12 items-center justify-center p-0! rounded-full! bg-pastelPink text-lg border-2 border-white sm:right-5 sm:top-5 sm:h-14 sm:w-14 sm:text-xl"
-                    aria-label={t('featured.openDetails', { title: featuredProjectData.title })}
-                  ><span className="leading-none">+</span></button>
                 </div>
 
                 <div className="cute-box mx-auto mt-3 w-fit bg-paperWhite px-4 py-2 text-center sm:absolute sm:bottom-5 sm:left-5 sm:mt-0 sm:px-5 sm:py-3 sm:text-left">
-                   <h3 className="text-xl font-display text-inkBlack drop-shadow-[1px_1px_0px_#ffffff]">{featuredProjectData.title}</h3>
-                   <p className="text-xs font-bold uppercase text-inkBlack/70">{t('featured.category')}</p>
+                  <div className="flex items-center gap-4">
+                    <div>
+                      <h3 className="text-xl font-display text-inkBlack drop-shadow-[1px_1px_0px_#ffffff]">{featuredProjectData.title}</h3>
+                      <p className="text-xs font-bold uppercase text-inkBlack/70">{t('featured.category')}</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <img
+                        src="/svg/robux_logo_black.svg"
+                        alt="Robux"
+                        className="h-6 w-6 shrink-0 object-contain"
+                        loading="lazy"
+                      />
+                      <span className="text-lg font-black leading-none text-inkBlack">
+                        {Number(featuredProjectData.robuxPrice ?? 0)}
+                      </span>
+                    </div>
+                  </div>
                 </div>
              </div>
             ) : (
@@ -1056,7 +1121,18 @@ function App() {
                     <p className="mx-auto text-xs font-bold uppercase tracking-wider text-inkBlack/70">
                       {projectData.subtitle}
                     </p>
-                    <span className="cute-box mt-4 inline-flex items-center bg-paperWhite px-6 py-2 text-xs font-black uppercase tracking-wider text-inkBlack transition-colors duration-300 ease-out hover:bg-pastelPink hover:text-inkBlack">
+                    <div className="mx-auto mt-3 flex items-center justify-center gap-2">
+                      <img
+                        src="/svg/robux_logo_black.svg"
+                        alt="Robux"
+                        className="h-6 w-6 shrink-0 object-contain"
+                        loading="lazy"
+                      />
+                      <span className="text-lg font-black leading-none text-inkBlack">
+                        {Number(projectData.robuxPrice ?? 0)}
+                      </span>
+                    </div>
+                    <span className="cute-box mt-3 inline-flex items-center bg-paperWhite px-6 py-2 text-xs font-black uppercase tracking-wider text-inkBlack transition-colors duration-300 ease-out hover:bg-pastelPink hover:text-inkBlack">
                       {t('assets.viewDetails')}
                     </span>
                   </div>
@@ -1193,7 +1269,7 @@ function App() {
             </button>
 
             <div className="relative flex w-full flex-col items-center justify-center gap-4 bg-white cute-box no-lift p-3 sm:p-6">
-              <div className="relative w-full max-w-md aspect-4/3 overflow-hidden bg-pastelBlue cute-box no-lift p-0! sm:max-w-5xl">
+              <div className="relative aspect-4/3 w-full max-w-86 overflow-hidden bg-pastelBlue cute-box no-lift p-0! sm:max-w-200">
                 <Gallery onBeforeOpen={handlePhotoSwipeBeforeOpen}>
                   {selectedProjectData.galleryImageUrls.map((galleryImageUrl, galleryImageIndex) => {
                     const imageDimensions = resolvePhotoSwipeDimensionsByUrl(galleryImageUrl)
@@ -1274,13 +1350,26 @@ function App() {
             </div>
 
             <div className="mt-5 sm:mt-8 flex w-full flex-col justify-center space-y-4 sm:space-y-6">
-              <div>
-                 <h2 className="text-3xl sm:text-5xl font-display text-inkBlack drop-shadow-[2px_2px_0px_#ffffff] mb-2">
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <h2 className="text-3xl sm:text-5xl font-display text-inkBlack drop-shadow-[2px_2px_0px_#ffffff] mb-2">
                     {selectedProjectData.title}
-                 </h2>
-                 <span className="cute-box mt-2 inline-block bg-paperWhite px-3 py-1 text-xs font-black uppercase shadow-none border-2 border-inkBlack">
-                   {selectedProjectData.subtitle}
-                 </span>
+                  </h2>
+                  <span className="cute-box mt-2 inline-block bg-paperWhite px-3 py-1 text-xs font-black uppercase shadow-none border-2 border-inkBlack">
+                    {selectedProjectData.subtitle}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 px-1 py-1">
+                  <img
+                    src="/svg/robux_logo_black.svg"
+                    alt="Robux"
+                    className="h-9 w-9 shrink-0 object-contain sm:h-10 sm:w-10"
+                    loading="lazy"
+                  />
+                  <span className="text-2xl font-black leading-none text-inkBlack sm:text-3xl">
+                    {Number(selectedProjectData.robuxPrice ?? 0)}
+                  </span>
+                </div>
               </div>
               <p className="text-base font-bold leading-relaxed text-inkBlack/80 bg-pastelYellow p-4 sm:p-6 cute-box shadow-none border-4 border-white">
                 {selectedProjectData.description}

@@ -1,9 +1,25 @@
 const globalRateLimitStateByKey = new Map()
 
 const globalRateLimitPolicyByRoute = {
-  auth: { windowMs: 10_000, maxRequests: 20 },
-  write: { windowMs: 10_000, maxRequests: 60 },
-  default: { windowMs: 10_000, maxRequests: 120 },
+  auth: { windowMs: 60_000, maxRequests: 40 },
+  contact: { windowMs: 60_000, maxRequests: 80 },
+  write: { windowMs: 60_000, maxRequests: 240 },
+  readCatalog: { windowMs: 60_000, maxRequests: 6_000 },
+  default: { windowMs: 60_000, maxRequests: 600 },
+}
+
+function normalizeRateLimitState(currentState, nowTimestamp) {
+  const safeRequestCount = Number.isFinite(currentState?.requestCount) && currentState.requestCount >= 0
+    ? currentState.requestCount
+    : 0
+  const safeWindowStartMs = Number.isFinite(currentState?.windowStartMs)
+    ? currentState.windowStartMs
+    : nowTimestamp
+
+  return {
+    requestCount: safeRequestCount,
+    windowStartMs: safeWindowStartMs,
+  }
 }
 
 function resolveRateLimitPolicy(requestPathName, requestMethod) {
@@ -11,7 +27,17 @@ function resolveRateLimitPolicy(requestPathName, requestMethod) {
     return globalRateLimitPolicyByRoute.auth
   }
 
-  const isWriteMethod = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(String(requestMethod || '').toUpperCase())
+  if (requestPathName === '/api/contact') {
+    return globalRateLimitPolicyByRoute.contact
+  }
+
+  const normalizedRequestMethod = String(requestMethod || '').toUpperCase()
+
+  if (normalizedRequestMethod === 'GET' && requestPathName === '/api/admin/articles') {
+    return globalRateLimitPolicyByRoute.readCatalog
+  }
+
+  const isWriteMethod = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(normalizedRequestMethod)
   if (isWriteMethod && requestPathName.startsWith('/api/admin/')) {
     return globalRateLimitPolicyByRoute.write
   }
@@ -36,12 +62,10 @@ export function resolveApiRateLimitResult({ clientIdentifier, requestMethod, req
   const rateLimitPolicy = resolveRateLimitPolicy(requestPathName, requestMethod)
   const rateLimitKey = resolveRateLimitKey(clientIdentifier, requestPathName, requestMethod)
 
-  const currentState = globalRateLimitStateByKey.get(rateLimitKey) || {
-    requestCount: 0,
-    windowStartMs: nowTimestamp,
-  }
+  const currentState = normalizeRateLimitState(globalRateLimitStateByKey.get(rateLimitKey), nowTimestamp)
 
-  const hasExpiredWindow = nowTimestamp - currentState.windowStartMs >= rateLimitPolicy.windowMs
+  const hasExpiredWindow = nowTimestamp < currentState.windowStartMs
+    || nowTimestamp - currentState.windowStartMs >= rateLimitPolicy.windowMs
   const nextState = hasExpiredWindow
     ? { requestCount: 1, windowStartMs: nowTimestamp }
     : { requestCount: currentState.requestCount + 1, windowStartMs: currentState.windowStartMs }
