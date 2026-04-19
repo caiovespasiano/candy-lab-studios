@@ -3,6 +3,8 @@ const globalAdminAccessConfig = {
   landingRouteHash: '#/',
   adminSessionStorageKey: 'globalAdminSessionToken',
   adminBackgroundStorageKey: 'globalLandingBackgroundHexColor',
+  adminBackgroundImageStorageKey: 'globalLandingBackgroundImageUrl',
+  adminGlobalYellowColorStorageKey: 'globalThemePastelYellowHexColor',
   adminArticleCatalogStorageKey: 'globalAdminArticleCatalog',
   adminSessionDurationInMinutes: 30,
   defaultAdminUsername: 'admin',

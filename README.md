@@ -100,6 +100,19 @@ Required variables:
 - VITE_ADMIN_VERIFICATION_CODE
 - VITE_ADMIN_SESSION_SECRET
 
+Alternative names (server-side only):
+
+- ADMIN_USERNAME
+- ADMIN_PASSWORD
+- ADMIN_VERIFICATION_CODE
+- ADMIN_SESSION_SECRET
+
+Production hardening:
+
+- In production, server startup fails if admin credentials are missing.
+- In production, default insecure credentials are rejected.
+- In production, session secret must be different from local fallback and contain at least 32 characters.
+
 Example:
 
 ```dotenv

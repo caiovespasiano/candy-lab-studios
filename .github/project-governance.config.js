@@ -34,6 +34,11 @@ const projectGovernanceConfig = {
       promoteHighLevelStateForSharedValues: true,
       avoidRepeatedAllocationForSharedStructures: true,
     },
+    persistencePolicy: {
+      requireProjectLevelPersistenceForStateChanges: true,
+      forbidBrowserOnlyPersistenceForMutations: true,
+      requiredMutationCategories: ['create', 'update', 'delete', 'upload', 'preferences'],
+    },
   },
   presentationAndSeo: {
     requireSemanticHtml: true,

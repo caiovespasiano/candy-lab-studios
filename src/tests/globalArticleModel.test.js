@@ -32,4 +32,43 @@ describe('globalArticleModel', () => {
     expect(validationResult.isValid).toBe(false)
     expect(validationResult.validationErrorCatalog.length).toBeGreaterThan(0)
   })
+
+  test('whenImageUrlContainsQueryStringThenCreateArticleEntityPreservesAmpersands', () => {
+    const articleEntity = createArticleEntity({
+      title: 'Artigo com URL',
+      subtitle: 'Subtitulo',
+      description: 'Descricao',
+      imageUrl: 'https://images.example.com/image.webp?auto=format&fit=crop&w=1200&q=80',
+      galleryImageUrls: ['https://images.example.com/gallery.webp?auto=format&fit=crop&w=1200&q=80'],
+    }, 0, () => 1_700_000_000_000)
+
+    expect(articleEntity.imageUrl.includes('&amp;')).toBe(false)
+    expect(articleEntity.imageUrl.includes('&fit=crop')).toBe(true)
+    expect(articleEntity.galleryImageUrls[0].includes('&amp;')).toBe(false)
+  })
+
+  test('whenImageUrlUsesUnsafeSchemeThenCreateArticleEntityFallsBackToSafeImageUrl', () => {
+    const articleEntity = createArticleEntity({
+      title: 'Artigo com URL insegura',
+      subtitle: 'Subtitulo',
+      description: 'Descricao',
+      imageUrl: 'javascript:alert(1)',
+      galleryImageUrls: ['javascript:alert(1)'],
+    }, 0, () => 1_700_000_000_000)
+
+    expect(articleEntity.imageUrl.startsWith('https://images.unsplash.com/')).toBe(true)
+    expect(articleEntity.galleryImageUrls[0].startsWith('https://images.unsplash.com/')).toBe(true)
+  })
+
+  test('whenRobuxPriceIsInvalidThenCreateArticleEntityNormalizesToZero', () => {
+    const articleEntity = createArticleEntity({
+      title: 'Artigo com preco invalido',
+      subtitle: 'Subtitulo',
+      description: 'Descricao',
+      imageUrl: 'https://example.com/image.webp',
+      robuxPrice: -120,
+    }, 0, () => 1_700_000_000_000)
+
+    expect(articleEntity.robuxPrice).toBe(0)
+  })
 })

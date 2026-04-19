@@ -3,6 +3,7 @@ import http from 'node:http'
 import path from 'node:path'
 import { URL } from 'node:url'
 import {
+  assertAdminAuthenticationSecurityConfiguration,
   authenticateAdminCredentials,
   authorizeAdminSessionFromRequest,
   createAdminSessionCookieClearValue,
@@ -12,7 +13,12 @@ import {
 import { resolveApiRateLimitResult } from './apiRateLimitService.js'
 import {
   createCorrelationIdentifier,
+  deleteUploadedImageByUrl,
+  listUploadedImageUrlCatalog,
   loadProjectArticleCatalogFromDisk,
+  loadProjectPreferencesFromDisk,
+  persistContactSubmissionOnDisk,
+  persistProjectPreferencesOnDisk,
   persistProjectArticleCatalogOnDisk,
   persistUploadedImageDataUrl,
   readRequestBodyAsJson,
@@ -22,6 +28,8 @@ import {
 
 const globalServerPort = Number(process.env.PORT || 4173)
 const globalServerHost = process.env.HOST || '0.0.0.0'
+
+assertAdminAuthenticationSecurityConfiguration()
 
 const {
   distributionDirectoryPath: globalDistributionDirectoryPath,
@@ -185,8 +193,19 @@ async function handleApiRoutes(request, response, requestPathName) {
     return true
   }
 
-  if (requestPathName === '/api/admin/upload-image') {
-    if (request.method !== 'POST') {
+  if (requestPathName === '/api/project/preferences') {
+    if (request.method !== 'GET') {
+      writeJsonResponse(response, 405, { statusCode: 405, message: 'Metodo nao suportado.' })
+      return true
+    }
+
+    const projectPreferences = await loadProjectPreferencesFromDisk()
+    writeJsonResponse(response, 200, { statusCode: 200, projectPreferences })
+    return true
+  }
+
+  if (requestPathName === '/api/admin/project/preferences') {
+    if (!['GET', 'POST'].includes(String(request.method || '').toUpperCase())) {
       writeJsonResponse(response, 405, { statusCode: 405, message: 'Metodo nao suportado.' })
       return true
     }
@@ -200,12 +219,78 @@ async function handleApiRoutes(request, response, requestPathName) {
       return true
     }
 
+    if (request.method === 'GET') {
+      const projectPreferences = await loadProjectPreferencesFromDisk()
+      writeJsonResponse(response, 200, { statusCode: 200, projectPreferences })
+      return true
+    }
+
     const requestPayload = await readRequestBodyAsJson(request, {
-      maxBodySizeInBytes: 15 * 1024 * 1024,
+      maxBodySizeInBytes: 32 * 1024,
       requireJsonContentType: true,
     })
-    const imageUrl = await persistUploadedImageDataUrl(requestPayload.imageDataUrl, requestPayload.sourceLabel)
-    writeJsonResponse(response, 200, { statusCode: 200, imageUrl })
+
+    const projectPreferences = await persistProjectPreferencesOnDisk(requestPayload.projectPreferences)
+    writeJsonResponse(response, 200, { statusCode: 200, projectPreferences })
+    return true
+  }
+
+  if (requestPathName === '/api/admin/upload-image') {
+    if (!['GET', 'POST', 'DELETE'].includes(String(request.method || '').toUpperCase())) {
+      writeJsonResponse(response, 405, { statusCode: 405, message: 'Metodo nao suportado.' })
+      return true
+    }
+
+    const authorizationResult = authorizeAdminSessionFromRequest(request)
+    if (!authorizationResult.isAuthorized) {
+      writeJsonResponse(response, authorizationResult.statusCode, {
+        statusCode: authorizationResult.statusCode,
+        message: authorizationResult.message,
+      })
+      return true
+    }
+
+    if (request.method === 'GET') {
+      const imageUrlCatalog = await listUploadedImageUrlCatalog()
+      writeJsonResponse(response, 200, { statusCode: 200, imageUrlCatalog })
+      return true
+    }
+
+    if (request.method === 'POST') {
+      const requestPayload = await readRequestBodyAsJson(request, {
+        maxBodySizeInBytes: 15 * 1024 * 1024,
+        requireJsonContentType: true,
+      })
+      const imageUrl = await persistUploadedImageDataUrl(requestPayload.imageDataUrl, requestPayload.sourceLabel)
+      writeJsonResponse(response, 200, { statusCode: 200, imageUrl })
+      return true
+    }
+
+    const requestPayload = await readRequestBodyAsJson(request, {
+      maxBodySizeInBytes: 32 * 1024,
+      requireJsonContentType: true,
+    })
+    const deletionResult = await deleteUploadedImageByUrl(requestPayload.imageUrl)
+    writeJsonResponse(response, 200, { statusCode: 200, isDeleted: deletionResult.isDeleted })
+    return true
+  }
+
+  if (requestPathName === '/api/contact') {
+    if (request.method !== 'POST') {
+      writeJsonResponse(response, 405, { statusCode: 405, message: 'Metodo nao suportado.' })
+      return true
+    }
+
+    const requestPayload = await readRequestBodyAsJson(request, {
+      maxBodySizeInBytes: 64 * 1024,
+      requireJsonContentType: true,
+    })
+
+    const persistedContactSubmission = await persistContactSubmissionOnDisk(requestPayload)
+    writeJsonResponse(response, 201, {
+      statusCode: 201,
+      message: `Mensagem recebida com sucesso de ${persistedContactSubmission.fullName}.`,
+    })
     return true
   }
 

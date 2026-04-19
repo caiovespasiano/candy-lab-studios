@@ -1,4 +1,7 @@
 import { defineConfig } from 'vite'
+import fs from 'node:fs'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import {
@@ -10,7 +13,12 @@ import {
 } from './server/adminAuthenticationDataService.js'
 import { resolveApiRateLimitResult } from './server/apiRateLimitService.js'
 import {
+  deleteUploadedImageByUrl,
+  listUploadedImageUrlCatalog,
   loadProjectArticleCatalogFromDisk,
+  loadProjectPreferencesFromDisk,
+  persistContactSubmissionOnDisk,
+  persistProjectPreferencesOnDisk,
   persistProjectArticleCatalogOnDisk,
   persistUploadedImageDataUrl,
   readRequestBodyAsJson,
@@ -32,6 +40,57 @@ const globalPreviewSecurityResponseHeaders = {
     "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
     "font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://images.unsplash.com; " +
     "connect-src 'self'; base-uri 'self'; form-action 'self';",
+}
+
+const globalDevServerWatchIgnoredPathCatalog = [
+  '**/data/articles.json',
+  '**/data/contactSubmissions.json',
+  '**/data/projectPreferences.json',
+  '**/public/uploads/**',
+]
+
+const globalCurrentFilePath = fileURLToPath(import.meta.url)
+const globalCurrentDirectoryPath = path.dirname(globalCurrentFilePath)
+const globalPublicUploadsDirectoryPath = path.resolve(globalCurrentDirectoryPath, 'public', 'uploads')
+
+const globalMimeTypeByExtension = {
+  '.avif': 'image/avif',
+  '.gif': 'image/gif',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.png': 'image/png',
+  '.webp': 'image/webp',
+}
+
+function resolveMimeTypeByFilePath(filePath) {
+  const fileExtension = path.extname(filePath).toLowerCase()
+  return globalMimeTypeByExtension[fileExtension] || 'application/octet-stream'
+}
+
+function isPathInsideParent(parentPath, targetPath) {
+  const relativePath = path.relative(parentPath, targetPath)
+  return relativePath.length > 0 && !relativePath.startsWith('..') && !path.isAbsolute(relativePath)
+}
+
+async function streamUploadFileFromDisk(response, filePath) {
+  const fileStats = await fs.promises.stat(filePath)
+
+  if (!fileStats.isFile()) {
+    response.statusCode = 404
+    response.end('Not Found')
+    return
+  }
+
+  response.statusCode = 200
+  response.setHeader('Content-Type', resolveMimeTypeByFilePath(filePath))
+
+  const readStream = fs.createReadStream(filePath)
+  readStream.on('error', () => {
+    response.statusCode = 500
+    response.end('Internal Server Error')
+  })
+
+  readStream.pipe(response)
 }
 
 function writeSafeApiErrorResponse(response, caughtError, fallbackMessage) {
@@ -56,13 +115,49 @@ function createProjectPersistenceApiPlugin() {
   return {
     name: 'project-persistence-api',
     configureServer(server) {
+      server.middlewares.use('/uploads', async (request, response, next) => {
+        if (!['GET', 'HEAD'].includes(String(request.method || 'GET').toUpperCase())) {
+          next()
+          return
+        }
+
+        try {
+          const uploadPathName = decodeURIComponent(String(request.url || '/').split('?')[0] || '/')
+          const uploadRelativePath = uploadPathName.replace(/^\//, '')
+          const uploadFilePath = path.resolve(globalPublicUploadsDirectoryPath, uploadRelativePath)
+
+          const isAllowedUploadPath = isPathInsideParent(globalPublicUploadsDirectoryPath, uploadFilePath)
+            || uploadFilePath === globalPublicUploadsDirectoryPath
+
+          if (!isAllowedUploadPath) {
+            response.statusCode = 403
+            response.end('Forbidden')
+            return
+          }
+
+          const fileExists = fs.existsSync(uploadFilePath)
+          if (!fileExists) {
+            response.statusCode = 404
+            response.end('Not Found')
+            return
+          }
+
+          await streamUploadFileFromDisk(response, uploadFilePath)
+        } catch {
+          next()
+        }
+      })
+
       server.middlewares.use('/api', (request, response, next) => {
         const requestPathName = request.url ? String(request.url).split('?')[0] : '/api'
+        const normalizedApiPathName = requestPathName.startsWith('/api/')
+          ? requestPathName
+          : `/api${requestPathName}`
         const clientIdentifier = resolveClientIdentifier(request)
         const rateLimitResult = resolveApiRateLimitResult({
           clientIdentifier,
           requestMethod: request.method,
-          requestPathName,
+          requestPathName: normalizedApiPathName,
         })
 
         if (rateLimitResult.isRateLimited) {
@@ -182,9 +277,23 @@ function createProjectPersistenceApiPlugin() {
         }
       })
 
-      server.middlewares.use('/api/admin/upload-image', async (request, response) => {
+      server.middlewares.use('/api/project/preferences', async (request, response) => {
         try {
-          if (request.method !== 'POST') {
+          if (request.method !== 'GET') {
+            writeJsonResponse(response, 405, { statusCode: 405, message: 'Metodo nao suportado.' })
+            return
+          }
+
+          const projectPreferences = await loadProjectPreferencesFromDisk()
+          writeJsonResponse(response, 200, { statusCode: 200, projectPreferences })
+        } catch (caughtError) {
+          writeSafeApiErrorResponse(response, caughtError, 'Falha ao carregar preferencias globais do projeto.')
+        }
+      })
+
+      server.middlewares.use('/api/admin/project/preferences', async (request, response) => {
+        try {
+          if (!['GET', 'POST'].includes(String(request.method || '').toUpperCase())) {
             writeJsonResponse(response, 405, { statusCode: 405, message: 'Metodo nao suportado.' })
             return
           }
@@ -198,18 +307,98 @@ function createProjectPersistenceApiPlugin() {
             return
           }
 
+          if (request.method === 'GET') {
+            const projectPreferences = await loadProjectPreferencesFromDisk()
+            writeJsonResponse(response, 200, { statusCode: 200, projectPreferences })
+            return
+          }
+
           const requestPayload = await readRequestBodyAsJson(request, {
-            maxBodySizeInBytes: 15 * 1024 * 1024,
+            maxBodySizeInBytes: 32 * 1024,
             requireJsonContentType: true,
           })
-          const imageUrl = await persistUploadedImageDataUrl(requestPayload.imageDataUrl, requestPayload.sourceLabel)
+
+          const projectPreferences = await persistProjectPreferencesOnDisk(requestPayload.projectPreferences)
+          writeJsonResponse(response, 200, { statusCode: 200, projectPreferences })
+        } catch (caughtError) {
+          writeSafeApiErrorResponse(response, caughtError, 'Falha ao persistir preferencias globais do projeto.')
+        }
+      })
+
+      server.middlewares.use('/api/admin/upload-image', async (request, response) => {
+        try {
+          if (!['GET', 'POST', 'DELETE'].includes(String(request.method || '').toUpperCase())) {
+            writeJsonResponse(response, 405, { statusCode: 405, message: 'Metodo nao suportado.' })
+            return
+          }
+
+          const authorizationResult = authorizeAdminSessionFromRequest(request)
+          if (!authorizationResult.isAuthorized) {
+            writeJsonResponse(response, authorizationResult.statusCode, {
+              statusCode: authorizationResult.statusCode,
+              message: authorizationResult.message,
+            })
+            return
+          }
+
+          if (request.method === 'GET') {
+            const imageUrlCatalog = await listUploadedImageUrlCatalog()
+
+            writeJsonResponse(response, 200, {
+              statusCode: 200,
+              imageUrlCatalog,
+            })
+            return
+          }
+
+          if (request.method === 'POST') {
+            const requestPayload = await readRequestBodyAsJson(request, {
+              maxBodySizeInBytes: 15 * 1024 * 1024,
+              requireJsonContentType: true,
+            })
+            const imageUrl = await persistUploadedImageDataUrl(requestPayload.imageDataUrl, requestPayload.sourceLabel)
+
+            writeJsonResponse(response, 200, {
+              statusCode: 200,
+              imageUrl,
+            })
+            return
+          }
+
+          const requestPayload = await readRequestBodyAsJson(request, {
+            maxBodySizeInBytes: 32 * 1024,
+            requireJsonContentType: true,
+          })
+          const deletionResult = await deleteUploadedImageByUrl(requestPayload.imageUrl)
 
           writeJsonResponse(response, 200, {
             statusCode: 200,
-            imageUrl,
+            isDeleted: deletionResult.isDeleted,
           })
         } catch (caughtError) {
           writeSafeApiErrorResponse(response, caughtError, 'Falha ao persistir imagem no projeto.')
+        }
+      })
+
+      server.middlewares.use('/api/contact', async (request, response) => {
+        try {
+          if (request.method !== 'POST') {
+            writeJsonResponse(response, 405, { statusCode: 405, message: 'Metodo nao suportado.' })
+            return
+          }
+
+          const requestPayload = await readRequestBodyAsJson(request, {
+            maxBodySizeInBytes: 64 * 1024,
+            requireJsonContentType: true,
+          })
+
+          const persistedContactSubmission = await persistContactSubmissionOnDisk(requestPayload)
+          writeJsonResponse(response, 201, {
+            statusCode: 201,
+            message: `Mensagem recebida com sucesso de ${persistedContactSubmission.fullName}.`,
+          })
+        } catch (caughtError) {
+          writeSafeApiErrorResponse(response, caughtError, 'Falha ao registrar mensagem de contato.')
         }
       })
 
@@ -230,6 +419,9 @@ export default defineConfig(({ command }) => {
     plugins: [react(), tailwindcss(), createProjectPersistenceApiPlugin()],
     server: {
       headers: globalSecurityResponseHeaders,
+      watch: {
+        ignored: globalDevServerWatchIgnoredPathCatalog,
+      },
     },
     preview: { headers: globalPreviewSecurityResponseHeaders },
     test: {
@@ -245,6 +437,9 @@ export default defineConfig(({ command }) => {
     ...(isDevelopmentServer && {
       server: {
         headers: globalSecurityResponseHeaders,
+        watch: {
+          ignored: globalDevServerWatchIgnoredPathCatalog,
+        },
       },
     }),
   }
