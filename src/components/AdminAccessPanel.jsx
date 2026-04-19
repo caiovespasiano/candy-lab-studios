@@ -1,6 +1,7 @@
 import { memo, useCallback, useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { Reorder } from 'framer-motion'
-import { FaArrowLeft, FaEdit, FaGripVertical, FaLock, FaPlus, FaSignOutAlt, FaTrash, FaUpload } from 'react-icons/fa'
+import { FaArrowLeft, FaEdit, FaGripVertical, FaImages, FaLock, FaPlus, FaSignOutAlt, FaTrash, FaUpload } from 'react-icons/fa'
 import { requestAdminAuthenticationUsingGateway } from '../services/adminAuthenticationService'
 import {
   clearPersistedAdminSessionToken,
@@ -8,13 +9,23 @@ import {
   restoreValidAdminSessionData,
 } from '../services/adminAccessSessionService'
 import {
+  applyGlobalBackgroundImageUrl,
   applyGlobalBackgroundHexColor,
+  applyGlobalYellowThemeHexColor,
+  loadPersistedGlobalBackgroundImageUrl,
   loadPersistedGlobalBackgroundHexColor,
+  loadPersistedGlobalYellowThemeHexColor,
+  persistGlobalBackgroundImageUrl,
   persistGlobalBackgroundHexColor,
+  persistGlobalYellowThemeHexColor,
 } from '../services/globalBackgroundPreferencesService'
 import {
+  deleteUploadedImageFromProject,
+  loadProjectPreferencesFromProject,
   loadPersistedArticleCatalogFromProject,
+  loadUploadedImageCatalogFromProject,
   persistArticleCatalogToProject,
+  persistProjectPreferencesToProject,
   uploadArticleImageToProject,
 } from '../services/projectPersistenceGatewayService'
 
@@ -55,6 +66,7 @@ function resolveEmptyAdminSessionState() {
 const globalEmptyArticleFormState = {
   title: '',
   subtitle: '',
+  robuxPrice: '0',
   description: '',
   imageUrl: '',
   imageAlternativeText: '',
@@ -63,7 +75,22 @@ const globalEmptyArticleFormState = {
 const globalAllowedImageMimeTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/avif']
 const globalMaxUploadFileSizeInBytes = 10 * 1024 * 1024
 const globalProjectPersistenceFallbackMessage =
-  'API local indisponível: alterações salvas apenas no armazenamento do navegador.'
+  'API local indisponível: alterações não foram salvas no projeto.'
+
+function resolveProjectPersistenceErrorMessage(caughtError) {
+  const statusCode = Number(caughtError?.statusCode || 0)
+
+  if (statusCode === 401) {
+    return 'Sessão administrativa expirada. Faça login novamente para salvar no projeto.'
+  }
+
+  if (statusCode === 429) {
+    return 'Muitas tentativas seguidas. Aguarde alguns instantes e tente salvar novamente.'
+  }
+
+  const receivedErrorMessage = String(caughtError?.message || '').trim()
+  return receivedErrorMessage || globalProjectPersistenceFallbackMessage
+}
 
 function convertImageFileToWebpDataUrl(imageFile) {
   return new Promise((resolve, reject) => {
@@ -102,21 +129,124 @@ function convertImageFileToWebpDataUrl(imageFile) {
   })
 }
 
-function GalleryUrlEditor({ galleryImageUrlDraftCatalog, onGalleryUrlDraftCatalogChange, onImageUpload }) {
+function readImageFileAsDataUrl(imageFile) {
+  return new Promise((resolve, reject) => {
+    const fileReader = new FileReader()
+    fileReader.onload = () => resolve(fileReader.result)
+    fileReader.onerror = () => reject(new Error('Leitura do arquivo falhou.'))
+    fileReader.readAsDataURL(imageFile)
+  })
+}
+
+async function resolvePreferredUploadDataUrl(imageFile) {
+  try {
+    return await convertImageFileToWebpDataUrl(imageFile)
+  } catch {
+    return readImageFileAsDataUrl(imageFile)
+  }
+}
+
+function resolveCoverImageUrlFromGallery(galleryImageUrlCatalog) {
+  if (!Array.isArray(galleryImageUrlCatalog) || galleryImageUrlCatalog.length === 0) {
+    return ''
+  }
+
+  return String(galleryImageUrlCatalog[0] || '').trim()
+}
+
+function GalleryUrlEditor({
+  galleryImageUrlDraftCatalog,
+  onGalleryUrlDraftCatalogChange,
+  onImageUpload,
+  onImageDelete,
+  reusableUploadedImageUrlCatalog,
+}) {
   const [galleryUrlInputValue, setGalleryUrlInputValue] = useState('')
   const [uploadConversionError, setUploadConversionError] = useState('')
   const [isConvertingUpload, setIsConvertingUpload] = useState(false)
+  const [isUploadedGalleryOpen, setIsUploadedGalleryOpen] = useState(false)
+  const [deletingImageUrl, setDeletingImageUrl] = useState('')
   const fileInputRef = useRef(null)
+
+  useEffect(() => {
+    if (!isUploadedGalleryOpen || typeof document === 'undefined') {
+      return undefined
+    }
+
+    const previousBodyOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+
+    return () => {
+      document.body.style.overflow = previousBodyOverflow
+    }
+  }, [isUploadedGalleryOpen])
+
+  function appendImageToGallery(nextImageUrl) {
+    const normalizedImageUrl = String(nextImageUrl || '').trim()
+
+    if (!normalizedImageUrl) {
+      return
+    }
+
+    const hasImageAlreadyBeenAdded = galleryImageUrlDraftCatalog.some((galleryImageUrl) => {
+      return String(galleryImageUrl || '').trim() === normalizedImageUrl
+    })
+
+    if (hasImageAlreadyBeenAdded) {
+      return
+    }
+
+    onGalleryUrlDraftCatalogChange([...galleryImageUrlDraftCatalog, normalizedImageUrl])
+  }
+
+  function handleSelectUploadedImageForArticle(imageUrl) {
+    appendImageToGallery(imageUrl)
+    setIsUploadedGalleryOpen(false)
+  }
+
+  async function handleDeleteUploadedImageFromSystem(imageUrl) {
+    const normalizedImageUrl = String(imageUrl || '').trim()
+
+    if (!normalizedImageUrl || deletingImageUrl) {
+      return
+    }
+
+    setDeletingImageUrl(normalizedImageUrl)
+
+    try {
+      const hasDeleteSucceeded = await onImageDelete(normalizedImageUrl)
+
+      if (hasDeleteSucceeded) {
+        const nextGalleryImageUrlDraftCatalog = galleryImageUrlDraftCatalog.filter((galleryImageUrl) => {
+          return String(galleryImageUrl || '').trim() !== normalizedImageUrl
+        })
+
+        onGalleryUrlDraftCatalogChange(nextGalleryImageUrlDraftCatalog)
+      }
+    } finally {
+      setDeletingImageUrl('')
+    }
+  }
 
   function handleAddGalleryUrlClick() {
     const trimmedUrl = galleryUrlInputValue.trim()
-    if (!trimmedUrl) return
-    onGalleryUrlDraftCatalogChange([...galleryImageUrlDraftCatalog, trimmedUrl])
+    if (!trimmedUrl) {
+      return
+    }
+
+    appendImageToGallery(trimmedUrl)
     setGalleryUrlInputValue('')
   }
 
-  function handleRemoveGalleryUrlAtIndex(targetIndex) {
-    onGalleryUrlDraftCatalogChange(galleryImageUrlDraftCatalog.filter((_, urlIndex) => urlIndex !== targetIndex))
+  async function handleRemoveGalleryUrlAtIndex(targetIndex) {
+    const targetGalleryImageUrl = galleryImageUrlDraftCatalog[targetIndex]
+    const nextGalleryImageUrlDraftCatalog = galleryImageUrlDraftCatalog.filter((_, urlIndex) => urlIndex !== targetIndex)
+
+    onGalleryUrlDraftCatalogChange(nextGalleryImageUrlDraftCatalog)
+
+    if (String(targetGalleryImageUrl || '').startsWith('/uploads/')) {
+      await onImageDelete(targetGalleryImageUrl)
+    }
   }
 
   function handleGalleryUrlInputKeyDown(event) {
@@ -146,15 +276,85 @@ function GalleryUrlEditor({ galleryImageUrlDraftCatalog, onGalleryUrlDraftCatalo
     setIsConvertingUpload(true)
 
     try {
-      const webpDataUrl = await convertImageFileToWebpDataUrl(selectedFile)
-      const persistedImageUrl = await onImageUpload(webpDataUrl, selectedFile.name || 'gallery-image')
-      onGalleryUrlDraftCatalogChange([...galleryImageUrlDraftCatalog, persistedImageUrl])
+      const uploadDataUrl = await resolvePreferredUploadDataUrl(selectedFile)
+      const persistedImageUrl = await onImageUpload(uploadDataUrl, selectedFile.name || 'gallery-image')
+      appendImageToGallery(persistedImageUrl)
     } catch {
       setUploadConversionError('Não foi possível enviar a imagem para a pasta do projeto.')
     } finally {
       setIsConvertingUpload(false)
     }
   }
+
+  const uploadedGalleryModal = isUploadedGalleryOpen && typeof document !== 'undefined'
+    ? createPortal(
+      <div
+        className="fixed inset-0 z-80 min-h-dvh overflow-y-auto bg-inkBlack/70 px-4 py-8 backdrop-blur-sm"
+        onClick={() => setIsUploadedGalleryOpen(false)}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Galeria"
+      >
+        <article
+          className="relative mx-auto w-full max-w-3xl rounded-xl border-4 border-inkBlack bg-paperWhite p-6 sm:p-8"
+          onClick={(event) => event.stopPropagation()}
+        >
+          <button
+            type="button"
+            onClick={() => setIsUploadedGalleryOpen(false)}
+            className="cute-control-button cute-control-button-close absolute right-4 top-4 z-10 flex h-10 w-10 items-center justify-center text-xl font-black"
+            aria-label="Fechar galeria"
+          >
+            ×
+          </button>
+
+          <h3 className="mb-6 text-2xl font-display text-inkBlack">Galeria</h3>
+
+          <div className="max-h-[65vh] overflow-y-auto pr-1">
+            {reusableUploadedImageUrlCatalog.length === 0 ? (
+              <p className="text-xs font-bold text-inkBlack/70">Nenhuma imagem foi encontrada na galeria.</p>
+            ) : (
+              <ul className="grid gap-3 sm:grid-cols-2">
+                {reusableUploadedImageUrlCatalog.map((imageUrl, imageIndex) => (
+                  <li
+                    key={`${imageIndex}-${imageUrl}`}
+                    className="relative overflow-hidden rounded-xl border-4 border-inkBlack/30 bg-paperWhite"
+                  >
+                    <img
+                      src={imageUrl}
+                      alt={`Imagem da galeria ${imageIndex + 1}`}
+                      className="h-28 w-full object-cover"
+                      loading="lazy"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteUploadedImageFromSystem(imageUrl)}
+                      disabled={deletingImageUrl === imageUrl}
+                      className="cute-control-button cute-control-button-close absolute right-2 top-2 z-10 h-8 w-8 text-lg disabled:opacity-60"
+                      aria-label={`Excluir imagem ${imageIndex + 1} da galeria`}
+                      title="Excluir imagem da galeria"
+                    >
+                      {deletingImageUrl === imageUrl ? '...' : '×'}
+                    </button>
+                    <div className="p-2">
+                      <button
+                        type="button"
+                        onClick={() => handleSelectUploadedImageForArticle(imageUrl)}
+                        className="cute-button h-9 w-full bg-pastelMint px-2 py-1 text-xs"
+                      >
+                        Usar
+                      </button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </article>
+      </div>,
+      document.body
+    )
+    : null
 
   return (
     <div className="w-full min-w-0">
@@ -175,6 +375,15 @@ function GalleryUrlEditor({ galleryImageUrlDraftCatalog, onGalleryUrlDraftCatalo
           aria-label="Adicionar URL à galeria"
         >
           <FaPlus aria-hidden="true" />
+        </button>
+        <button
+          type="button"
+          onClick={() => setIsUploadedGalleryOpen((isOpen) => !isOpen)}
+          className="cute-button flex h-12 w-12 shrink-0 items-center justify-center bg-pastelYellow p-0! text-base"
+          aria-label="Abrir galeria"
+          title="Abrir galeria"
+        >
+          <FaImages aria-hidden="true" />
         </button>
         <button
           type="button"
@@ -199,6 +408,7 @@ function GalleryUrlEditor({ galleryImageUrlDraftCatalog, onGalleryUrlDraftCatalo
           aria-label="Selecionar imagem para upload"
         />
       </div>
+      {uploadedGalleryModal}
       {uploadConversionError && (
         <p className="mt-1 text-xs font-black text-red-700" role="alert">{uploadConversionError}</p>
       )}
@@ -242,46 +452,9 @@ function ArticleFormFields({
   submitLabel,
   onCancelClick,
   onImageUpload,
+  onImageDelete,
+  reusableUploadedImageUrlCatalog,
 }) {
-  const [mainImageUploadConversionError, setMainImageUploadConversionError] = useState('')
-  const [isMainImageUploadConverting, setIsMainImageUploadConverting] = useState(false)
-  const mainImageFileInputRef = useRef(null)
-
-  async function handleMainImageFileChange(event) {
-    const selectedFile = event.target.files?.[0]
-    event.target.value = ''
-
-    if (!selectedFile) return
-
-    if (!globalAllowedImageMimeTypes.includes(selectedFile.type)) {
-      setMainImageUploadConversionError('Formato não suportado. Use JPG, PNG, GIF, WebP ou AVIF.')
-      return
-    }
-
-    if (selectedFile.size > globalMaxUploadFileSizeInBytes) {
-      setMainImageUploadConversionError('Arquivo muito grande. Limite: 10 MB.')
-      return
-    }
-
-    setMainImageUploadConversionError('')
-    setIsMainImageUploadConverting(true)
-
-    try {
-      const webpDataUrl = await convertImageFileToWebpDataUrl(selectedFile)
-      const persistedImageUrl = await onImageUpload(webpDataUrl, selectedFile.name || 'main-image')
-      onInputChange({
-        target: {
-          name: 'imageUrl',
-          value: persistedImageUrl,
-        },
-      })
-    } catch {
-      setMainImageUploadConversionError('Não foi possível enviar a imagem principal para a pasta do projeto.')
-    } finally {
-      setIsMainImageUploadConverting(false)
-    }
-  }
-
   return (
     <div className="grid min-w-0 gap-4">
       <label className="text-xs font-black uppercase tracking-wider text-inkBlack">
@@ -307,44 +480,21 @@ function ArticleFormFields({
         />
       </label>
       <label className="text-xs font-black uppercase tracking-wider text-inkBlack">
-        URL da imagem principal
-        <div className="mt-2 flex gap-2">
-          <input
-            className="cute-input w-full"
-            name="imageUrl"
-            type="url"
-            value={formState.imageUrl}
-            onChange={onInputChange}
-            required
-            placeholder="https://exemplo.com/imagem.jpg ou upload"
-          />
-          <button
-            type="button"
-            onClick={() => mainImageFileInputRef.current?.click()}
-            disabled={isMainImageUploadConverting}
-            className="cute-button flex h-12 w-12 shrink-0 items-center justify-center bg-pastelBlue p-0! text-base disabled:opacity-60"
-            aria-label="Fazer upload da imagem principal"
-            title="Upload da imagem principal (converte para WebP)"
-          >
-            {isMainImageUploadConverting ? (
-              <span className="text-xs font-black">...</span>
-            ) : (
-              <FaUpload aria-hidden="true" />
-            )}
-          </button>
-          <input
-            ref={mainImageFileInputRef}
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={handleMainImageFileChange}
-            aria-label="Selecionar imagem principal para upload"
-          />
-        </div>
-        {mainImageUploadConversionError && (
-          <p className="mt-1 text-xs font-black text-red-700" role="alert">{mainImageUploadConversionError}</p>
-        )}
+        Preço em Robux
+        <input
+          className="cute-input mt-2 w-full"
+          name="robuxPrice"
+          type="number"
+          min="0"
+          step="1"
+          value={formState.robuxPrice}
+          onChange={onInputChange}
+          required
+        />
       </label>
+      <p className="rounded-xl border-2 border-inkBlack bg-pastelBlue/35 px-3 py-2 text-xs font-black text-inkBlack">
+        Imagem destaque: a primeira imagem da galeria será usada automaticamente como capa do artigo.
+      </p>
       <label className="text-xs font-black uppercase tracking-wider text-inkBlack">
         Texto alternativo da imagem
         <input
@@ -370,6 +520,8 @@ function ArticleFormFields({
         galleryImageUrlDraftCatalog={galleryUrlDraftCatalog}
         onGalleryUrlDraftCatalogChange={onGalleryUrlDraftCatalogChange}
         onImageUpload={onImageUpload}
+        onImageDelete={onImageDelete}
+        reusableUploadedImageUrlCatalog={reusableUploadedImageUrlCatalog}
       />
       <div className="flex min-w-0 gap-3 pt-1">
         <button type="submit" className="cute-button flex flex-1 items-center justify-center gap-2 bg-pastelMint">
@@ -472,20 +624,100 @@ export function AdminAccessPanel({ articlePublicationController, onArticleCatalo
   const [globalBackgroundHexColor, setGlobalBackgroundHexColor] = useState(() => {
     return loadPersistedGlobalBackgroundHexColor()
   })
+  const [globalBackgroundImageUrl, setGlobalBackgroundImageUrl] = useState(() => {
+    return loadPersistedGlobalBackgroundImageUrl()
+  })
+  const [globalYellowThemeHexColor, setGlobalYellowThemeHexColor] = useState(() => {
+    return loadPersistedGlobalYellowThemeHexColor()
+  })
+  const [uploadedImageUrlCatalog, setUploadedImageUrlCatalog] = useState([])
   const [sortableArticleCatalog, setSortableArticleCatalog] = useState(initialAdminArticleCatalog)
   const currentSortOrderRef = useRef(initialAdminArticleCatalog)
   const preDragCatalogRef = useRef(null)
+  const shouldCloseArticleModalFromOverlayClickRef = useRef(false)
   const [isArticleModalOpen, setIsArticleModalOpen] = useState(false)
+
+  const refreshUploadedImageCatalog = useCallback(async () => {
+    const uploadedImageResponse = await loadUploadedImageCatalogFromProject()
+    const normalizedUploadedImageUrlCatalog = Array.isArray(uploadedImageResponse.imageUrlCatalog)
+      ? uploadedImageResponse.imageUrlCatalog
+      : []
+
+    setUploadedImageUrlCatalog(normalizedUploadedImageUrlCatalog)
+    return normalizedUploadedImageUrlCatalog
+  }, [])
 
   const handleImageUploadToProject = useCallback(async (imageDataUrl, sourceLabel) => {
     try {
       const uploadResponse = await uploadArticleImageToProject({ imageDataUrl, sourceLabel })
-      return String(uploadResponse.imageUrl || imageDataUrl)
-    } catch {
-      setArticleFeedbackMessage(globalProjectPersistenceFallbackMessage)
-      return imageDataUrl
+      const persistedImageUrl = String(uploadResponse.imageUrl || '').trim()
+
+      if (persistedImageUrl) {
+        setUploadedImageUrlCatalog((currentUploadedImageUrlCatalog) => {
+          if (currentUploadedImageUrlCatalog.includes(persistedImageUrl)) {
+            return currentUploadedImageUrlCatalog
+          }
+
+          return [persistedImageUrl, ...currentUploadedImageUrlCatalog]
+        })
+      }
+
+      return persistedImageUrl || imageDataUrl
+    } catch (caughtError) {
+      setArticleFeedbackMessage(resolveProjectPersistenceErrorMessage(caughtError))
+      throw caughtError
     }
   }, [])
+
+  const handleImageDeleteFromProject = useCallback(async (imageUrl) => {
+    try {
+      await deleteUploadedImageFromProject(imageUrl)
+      setUploadedImageUrlCatalog((currentUploadedImageUrlCatalog) => {
+        return currentUploadedImageUrlCatalog.filter((currentImageUrl) => currentImageUrl !== imageUrl)
+      })
+      return true
+    } catch (caughtError) {
+      setArticleFeedbackMessage(resolveProjectPersistenceErrorMessage(caughtError))
+      return false
+    }
+  }, [])
+
+  const syncGlobalVisualPreferencesState = useCallback((projectPreferences) => {
+    const persistedBackgroundHexColor = persistGlobalBackgroundHexColor(projectPreferences?.backgroundHexColor)
+    const persistedBackgroundImageUrl = persistGlobalBackgroundImageUrl(projectPreferences?.backgroundImageUrl)
+    const persistedYellowThemeHexColor = persistGlobalYellowThemeHexColor(projectPreferences?.yellowThemeHexColor)
+
+    setGlobalBackgroundHexColor(persistedBackgroundHexColor)
+    setGlobalBackgroundImageUrl(persistedBackgroundImageUrl)
+    setGlobalYellowThemeHexColor(persistedYellowThemeHexColor)
+
+    return {
+      backgroundHexColor: persistedBackgroundHexColor,
+      backgroundImageUrl: persistedBackgroundImageUrl,
+      yellowThemeHexColor: persistedYellowThemeHexColor,
+    }
+  }, [])
+
+  const persistGlobalVisualPreferencesToProject = useCallback(async (projectPreferencesOverride) => {
+    const requestPayload = {
+      backgroundHexColor: globalBackgroundHexColor,
+      backgroundImageUrl: globalBackgroundImageUrl,
+      yellowThemeHexColor: globalYellowThemeHexColor,
+      ...projectPreferencesOverride,
+    }
+
+    const persistResponse = await persistProjectPreferencesToProject(requestPayload)
+    const persistedProjectPreferences = syncGlobalVisualPreferencesState(
+      persistResponse.projectPreferences || requestPayload
+    )
+
+    return persistedProjectPreferences
+  }, [
+    globalBackgroundHexColor,
+    globalBackgroundImageUrl,
+    globalYellowThemeHexColor,
+    syncGlobalVisualPreferencesState,
+  ])
 
   const syncArticleCatalogState = useCallback((nextArticleCatalog) => {
     setSortableArticleCatalog(nextArticleCatalog)
@@ -512,6 +744,10 @@ export function AdminAccessPanel({ articlePublicationController, onArticleCatalo
     async function restoreAdminSessionFromStorage() {
       const restoredAdminSession = await restoreValidAdminSessionData()
       if (restoredAdminSession.isAuthenticated) {
+        refreshUploadedImageCatalog().catch((caughtError) => {
+          setArticleFeedbackMessage(resolveProjectPersistenceErrorMessage(caughtError))
+        })
+
         setAdminSessionState({
           isAuthenticated: true,
           username: restoredAdminSession.sessionData.username,
@@ -520,11 +756,36 @@ export function AdminAccessPanel({ articlePublicationController, onArticleCatalo
       }
     }
     restoreAdminSessionFromStorage()
-  }, [])
+  }, [refreshUploadedImageCatalog])
+
+  useEffect(() => {
+    let isSubscriptionActive = true
+
+    async function restoreProjectVisualPreferences() {
+      try {
+        const projectPreferencesResponse = await loadProjectPreferencesFromProject()
+        if (!isSubscriptionActive) {
+          return
+        }
+
+        syncGlobalVisualPreferencesState(projectPreferencesResponse.projectPreferences)
+      } catch {
+        // Keep local fallback values when project API is unavailable.
+      }
+    }
+
+    restoreProjectVisualPreferences()
+
+    return () => {
+      isSubscriptionActive = false
+    }
+  }, [syncGlobalVisualPreferencesState])
 
   useEffect(() => {
     applyGlobalBackgroundHexColor(globalBackgroundHexColor)
-  }, [globalBackgroundHexColor])
+    applyGlobalBackgroundImageUrl(globalBackgroundImageUrl)
+    applyGlobalYellowThemeHexColor(globalYellowThemeHexColor)
+  }, [globalBackgroundHexColor, globalBackgroundImageUrl, globalYellowThemeHexColor])
 
   useEffect(() => {
     let isSubscriptionActive = true
@@ -548,9 +809,7 @@ export function AdminAccessPanel({ articlePublicationController, onArticleCatalo
         syncArticleCatalogState(reorderResult.articleCatalog)
       } catch {
         if (isSubscriptionActive) {
-          const fallbackCatalog = articlePublicationController.listAllArticleCatalog().articleCatalog
-          syncArticleCatalogState(fallbackCatalog)
-          setArticleFeedbackMessage(globalProjectPersistenceFallbackMessage)
+          setArticleFeedbackMessage('Não foi possível carregar o catálogo do projeto. Verifique a API local.')
         }
       }
     }
@@ -595,11 +854,15 @@ export function AdminAccessPanel({ articlePublicationController, onArticleCatalo
       username: adminAuthenticationResult.username,
       sessionExpiresAtInSeconds: adminAuthenticationResult.sessionExpiresAtInSeconds,
     })
+    refreshUploadedImageCatalog().catch((caughtError) => {
+      setArticleFeedbackMessage(resolveProjectPersistenceErrorMessage(caughtError))
+    })
     setAdminCredentialsFormState({ username: '', password: '', verificationCode: '' })
   }
 
   async function handleAdminLogoutClick() {
     await clearPersistedAdminSessionToken()
+    setUploadedImageUrlCatalog([])
     setAdminSessionState({
       isAuthenticated: false,
       username: '',
@@ -608,10 +871,85 @@ export function AdminAccessPanel({ articlePublicationController, onArticleCatalo
     setAdminFeedbackMessage('Sessão administrativa encerrada com segurança.')
   }
 
-  function handleBackgroundHexColorChange(event) {
+  async function handleBackgroundHexColorChange(event) {
     const changedBackgroundHexColorValue = event.target.value
     const persistedBackgroundHexColor = persistGlobalBackgroundHexColor(changedBackgroundHexColorValue)
     setGlobalBackgroundHexColor(persistedBackgroundHexColor)
+
+    try {
+      await persistGlobalVisualPreferencesToProject({
+        backgroundHexColor: persistedBackgroundHexColor,
+      })
+    } catch (caughtError) {
+      setArticleFeedbackMessage(resolveProjectPersistenceErrorMessage(caughtError))
+    }
+  }
+
+  async function handleGlobalYellowThemeHexColorChange(event) {
+    const changedYellowThemeHexColorValue = event.target.value
+    const persistedYellowThemeHexColor = persistGlobalYellowThemeHexColor(changedYellowThemeHexColorValue)
+    setGlobalYellowThemeHexColor(persistedYellowThemeHexColor)
+
+    try {
+      await persistGlobalVisualPreferencesToProject({
+        yellowThemeHexColor: persistedYellowThemeHexColor,
+      })
+    } catch (caughtError) {
+      setArticleFeedbackMessage(resolveProjectPersistenceErrorMessage(caughtError))
+    }
+  }
+
+  async function handleBackgroundImageUrlChange(event) {
+    const changedBackgroundImageUrlValue = event.target.value
+    const persistedBackgroundImageUrl = persistGlobalBackgroundImageUrl(changedBackgroundImageUrlValue)
+    setGlobalBackgroundImageUrl(persistedBackgroundImageUrl)
+
+    try {
+      await persistGlobalVisualPreferencesToProject({
+        backgroundImageUrl: persistedBackgroundImageUrl,
+      })
+    } catch (caughtError) {
+      setArticleFeedbackMessage(resolveProjectPersistenceErrorMessage(caughtError))
+    }
+  }
+
+  async function handleBackgroundImagePreviewSelection(selectedBackgroundImageUrlValue) {
+    const persistedBackgroundImageUrl = persistGlobalBackgroundImageUrl(selectedBackgroundImageUrlValue)
+    setGlobalBackgroundImageUrl(persistedBackgroundImageUrl)
+
+    try {
+      await persistGlobalVisualPreferencesToProject({
+        backgroundImageUrl: persistedBackgroundImageUrl,
+      })
+    } catch (caughtError) {
+      setArticleFeedbackMessage(resolveProjectPersistenceErrorMessage(caughtError))
+    }
+  }
+
+  async function handleUseDefaultUploadedBackgroundImage() {
+    const persistedBackgroundImageUrl = persistGlobalBackgroundImageUrl('/background/background.jpg')
+    setGlobalBackgroundImageUrl(persistedBackgroundImageUrl)
+
+    try {
+      await persistGlobalVisualPreferencesToProject({
+        backgroundImageUrl: persistedBackgroundImageUrl,
+      })
+    } catch (caughtError) {
+      setArticleFeedbackMessage(resolveProjectPersistenceErrorMessage(caughtError))
+    }
+  }
+
+  async function handleClearBackgroundImage() {
+    const persistedBackgroundImageUrl = persistGlobalBackgroundImageUrl('')
+    setGlobalBackgroundImageUrl(persistedBackgroundImageUrl)
+
+    try {
+      await persistGlobalVisualPreferencesToProject({
+        backgroundImageUrl: persistedBackgroundImageUrl,
+      })
+    } catch (caughtError) {
+      setArticleFeedbackMessage(resolveProjectPersistenceErrorMessage(caughtError))
+    }
   }
 
   function handleCreationFormInputChange(event) {
@@ -622,8 +960,15 @@ export function AdminAccessPanel({ articlePublicationController, onArticleCatalo
   async function handleArticleCreationSubmission(event) {
     event.preventDefault()
 
+    const previousArticleCatalog = [...currentSortOrderRef.current]
+    const coverImageUrl = resolveCoverImageUrlFromGallery(creationGalleryUrlDraftCatalog)
+
     const articleCreationResult = articlePublicationController.createArticle(
-      { ...articleCreationFormState, galleryImageUrls: creationGalleryUrlDraftCatalog },
+      {
+        ...articleCreationFormState,
+        imageUrl: coverImageUrl,
+        galleryImageUrls: creationGalleryUrlDraftCatalog,
+      },
       'admin-article-creation-flow'
     )
 
@@ -636,9 +981,10 @@ export function AdminAccessPanel({ articlePublicationController, onArticleCatalo
     try {
       const persistedArticleCatalogResult = await persistArticleCatalogToProjectAndSyncStorage(articleCreationResult.articleCatalog)
       setArticleFeedbackMessage(persistedArticleCatalogResult.publicMessage)
-    } catch {
-      syncArticleCatalogState(articleCreationResult.articleCatalog)
-      setArticleFeedbackMessage(globalProjectPersistenceFallbackMessage)
+    } catch (caughtError) {
+      syncArticleCatalogState(previousArticleCatalog)
+      setArticleFeedbackMessage(resolveProjectPersistenceErrorMessage(caughtError))
+      return
     }
 
     setArticleCreationFormState(globalEmptyArticleFormState)
@@ -649,6 +995,9 @@ export function AdminAccessPanel({ articlePublicationController, onArticleCatalo
   function handleOpenArticleCreationModal() {
     setArticleCreationFormState(globalEmptyArticleFormState)
     setCreationGalleryUrlDraftCatalog([])
+    refreshUploadedImageCatalog().catch((caughtError) => {
+      setArticleFeedbackMessage(resolveProjectPersistenceErrorMessage(caughtError))
+    })
     setIsArticleModalOpen(true)
   }
 
@@ -659,11 +1008,31 @@ export function AdminAccessPanel({ articlePublicationController, onArticleCatalo
     setEditGalleryUrlDraftCatalog([])
   }
 
+  function handleArticleModalOverlayPointerDownCapture(event) {
+    shouldCloseArticleModalFromOverlayClickRef.current = event.target === event.currentTarget
+  }
+
+  function handleArticleModalOverlayClick(event) {
+    const hasStartedOnOverlay = shouldCloseArticleModalFromOverlayClickRef.current
+    shouldCloseArticleModalFromOverlayClickRef.current = false
+
+    if (!hasStartedOnOverlay) {
+      return
+    }
+
+    if (event.target !== event.currentTarget) {
+      return
+    }
+
+    handleCloseArticleModal()
+  }
+
   function handleEditArticleClick(articleData) {
     setEditingArticleIdentifier(articleData.id)
     setArticleEditFormState({
       title: articleData.title,
       subtitle: articleData.subtitle,
+      robuxPrice: String(articleData.robuxPrice ?? 0),
       description: articleData.description,
       imageUrl: articleData.imageUrl,
       imageAlternativeText: articleData.imageAlternativeText,
@@ -685,9 +1054,16 @@ export function AdminAccessPanel({ articlePublicationController, onArticleCatalo
   async function handleArticleEditSubmission(event) {
     event.preventDefault()
 
+    const previousArticleCatalog = [...currentSortOrderRef.current]
+    const coverImageUrl = resolveCoverImageUrlFromGallery(editGalleryUrlDraftCatalog)
+
     const articleUpdateResult = articlePublicationController.updateArticle(
       editingArticleIdentifier,
-      { ...articleEditFormState, galleryImageUrls: editGalleryUrlDraftCatalog },
+      {
+        ...articleEditFormState,
+        imageUrl: coverImageUrl,
+        galleryImageUrls: editGalleryUrlDraftCatalog,
+      },
       'admin-article-edit-flow'
     )
 
@@ -700,15 +1076,17 @@ export function AdminAccessPanel({ articlePublicationController, onArticleCatalo
     try {
       const persistedArticleCatalogResult = await persistArticleCatalogToProjectAndSyncStorage(articleUpdateResult.articleCatalog)
       setArticleFeedbackMessage(persistedArticleCatalogResult.publicMessage)
-    } catch {
-      syncArticleCatalogState(articleUpdateResult.articleCatalog)
-      setArticleFeedbackMessage(globalProjectPersistenceFallbackMessage)
+    } catch (caughtError) {
+      syncArticleCatalogState(previousArticleCatalog)
+      setArticleFeedbackMessage(resolveProjectPersistenceErrorMessage(caughtError))
+      return
     }
 
     handleCancelEditClick()
   }
 
   async function handleArticleVisibilityToggle(articleIdentifier) {
+    const previousArticleCatalog = [...currentSortOrderRef.current]
     const articleToggleResult = articlePublicationController.toggleArticlePublication(
       articleIdentifier,
       'admin-article-toggle-flow'
@@ -723,13 +1101,14 @@ export function AdminAccessPanel({ articlePublicationController, onArticleCatalo
     try {
       const persistedArticleCatalogResult = await persistArticleCatalogToProjectAndSyncStorage(articleToggleResult.articleCatalog)
       setArticleFeedbackMessage(persistedArticleCatalogResult.publicMessage)
-    } catch {
-      syncArticleCatalogState(articleToggleResult.articleCatalog)
-      setArticleFeedbackMessage(globalProjectPersistenceFallbackMessage)
+    } catch (caughtError) {
+      syncArticleCatalogState(previousArticleCatalog)
+      setArticleFeedbackMessage(resolveProjectPersistenceErrorMessage(caughtError))
     }
   }
 
   async function handleArticleDeletion(articleIdentifier) {
+    const previousArticleCatalog = [...currentSortOrderRef.current]
     const articleDeletionResult = articlePublicationController.deleteArticle(articleIdentifier, 'admin-article-delete-flow')
 
     setArticleFeedbackMessage(articleDeletionResult.publicMessage)
@@ -744,9 +1123,9 @@ export function AdminAccessPanel({ articlePublicationController, onArticleCatalo
       if (editingArticleIdentifier === articleIdentifier) {
         handleCancelEditClick()
       }
-    } catch {
-      syncArticleCatalogState(articleDeletionResult.articleCatalog)
-      setArticleFeedbackMessage(globalProjectPersistenceFallbackMessage)
+    } catch (caughtError) {
+      syncArticleCatalogState(previousArticleCatalog)
+      setArticleFeedbackMessage(resolveProjectPersistenceErrorMessage(caughtError))
       if (editingArticleIdentifier === articleIdentifier) {
         handleCancelEditClick()
       }
@@ -777,18 +1156,19 @@ export function AdminAccessPanel({ articlePublicationController, onArticleCatalo
       )
       setArticleFeedbackMessage(reorderResult.publicMessage)
       if (reorderResult.statusCode === 200) {
+        syncArticleCatalogState(reorderResult.articleCatalog)
+
         try {
-          const persistedArticleCatalogResult = await persistArticleCatalogToProjectAndSyncStorage(reorderResult.articleCatalog)
-          setArticleFeedbackMessage(persistedArticleCatalogResult.publicMessage)
-        } catch {
-          syncArticleCatalogState(reorderResult.articleCatalog)
-          setArticleFeedbackMessage(globalProjectPersistenceFallbackMessage)
+          await persistArticleCatalogToProject(reorderResult.articleCatalog)
+        } catch (caughtError) {
+          syncArticleCatalogState(previousCatalog)
+          setArticleFeedbackMessage(resolveProjectPersistenceErrorMessage(caughtError))
         }
       }
     }
 
     preDragCatalogRef.current = null
-  }, [articlePublicationController, persistArticleCatalogToProjectAndSyncStorage, syncArticleCatalogState])
+  }, [articlePublicationController, syncArticleCatalogState])
 
   const adminSessionExpiresAtLabel = adminSessionState.sessionExpiresAtInSeconds
     ? new Date(adminSessionState.sessionExpiresAtInSeconds * 1000).toLocaleString('pt-BR')
@@ -891,7 +1271,7 @@ export function AdminAccessPanel({ articlePublicationController, onArticleCatalo
           <article className="cute-box bg-pastelYellow p-6 sm:p-8">
             <h2 className="text-2xl font-display text-inkBlack">Personalização global</h2>
             <p className="mt-2 text-sm font-bold text-inkBlack/80">
-              Defina a cor de fundo padrão da landing page. A alteração é aplicada imediatamente.
+              Defina cor e imagem de fundo padrão da landing page. A alteração é aplicada imediatamente.
             </p>
 
             <label className="mt-5 flex items-center gap-4 text-xs font-black uppercase tracking-wider text-inkBlack">
@@ -907,6 +1287,86 @@ export function AdminAccessPanel({ articlePublicationController, onArticleCatalo
                 {globalBackgroundHexColor}
               </span>
             </label>
+
+            <label className="mt-4 flex items-center gap-4 text-xs font-black uppercase tracking-wider text-inkBlack">
+              Cor global
+              <input
+                className="h-10 w-10 shrink-0 cursor-pointer rounded-lg border-4 border-inkBlack bg-paperWhite p-0.5"
+                type="color"
+                value={globalYellowThemeHexColor}
+                onChange={handleGlobalYellowThemeHexColorChange}
+                aria-label="Cor global do tema"
+              />
+              <span className="rounded-xl border-2 border-inkBlack bg-paperWhite px-3 py-1 text-sm font-black normal-case tracking-normal">
+                {globalYellowThemeHexColor}
+              </span>
+            </label>
+
+            <label className="mt-5 grid gap-2 text-xs font-black uppercase tracking-wider text-inkBlack">
+              Imagem de fundo da landing
+              <input
+                className="cute-input w-full"
+                type="text"
+                value={globalBackgroundImageUrl}
+                onChange={handleBackgroundImageUrlChange}
+                placeholder="/background/background.jpg"
+                aria-label="URL da imagem de fundo global da landing"
+              />
+            </label>
+
+            <div className="mt-3 grid gap-2 text-xs font-black uppercase tracking-wider text-inkBlack">
+              <span>Selecionar imagem enviada por pré-visualização</span>
+              {uploadedImageUrlCatalog.length === 0 ? (
+                <p className="text-xs font-bold normal-case tracking-normal text-inkBlack/70">
+                  Nenhuma imagem enviada disponível para seleção.
+                </p>
+              ) : (
+                <ul className="grid gap-2 sm:grid-cols-2">
+                  {uploadedImageUrlCatalog.map((uploadedImageUrl) => {
+                    const isSelectedBackgroundImage = globalBackgroundImageUrl === uploadedImageUrl
+
+                    return (
+                      <li key={uploadedImageUrl}>
+                        <button
+                          type="button"
+                          onClick={() => handleBackgroundImagePreviewSelection(uploadedImageUrl)}
+                          className={
+                            `w-full overflow-hidden rounded-xl border-4 bg-paperWhite p-0 `
+                            + `${isSelectedBackgroundImage ? 'border-inkBlack' : 'border-inkBlack/30'}`
+                          }
+                          aria-label={`Selecionar ${uploadedImageUrl} como imagem de fundo`}
+                          title={uploadedImageUrl}
+                        >
+                          <img
+                            src={uploadedImageUrl}
+                            alt="Pré-visualização da imagem de fundo"
+                            className="h-24 w-full object-cover"
+                            loading="lazy"
+                          />
+                        </button>
+                      </li>
+                    )
+                  })}
+                </ul>
+              )}
+            </div>
+
+            <div className="mt-3 flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={handleUseDefaultUploadedBackgroundImage}
+                className="cute-button bg-pastelMint px-4 py-2 text-xs"
+              >
+                Usar Background
+              </button>
+              <button
+                type="button"
+                onClick={handleClearBackgroundImage}
+                className="cute-button bg-paperWhite px-4 py-2 text-xs"
+              >
+                Cor Sólida
+              </button>
+            </div>
           </article>
 
           <article className="cute-box bg-pastelBlue p-6 sm:p-8">
@@ -960,7 +1420,8 @@ export function AdminAccessPanel({ articlePublicationController, onArticleCatalo
       {isArticleModalOpen && (
         <div
           className="fixed inset-0 z-50 overflow-y-auto bg-inkBlack/80 px-4 py-10 backdrop-blur-sm"
-          onClick={handleCloseArticleModal}
+          onPointerDownCapture={handleArticleModalOverlayPointerDownCapture}
+          onClick={handleArticleModalOverlayClick}
           aria-modal="true"
           role="dialog"
           aria-label={editingArticleIdentifier ? 'Editar artigo' : 'Novo artigo'}
@@ -992,6 +1453,8 @@ export function AdminAccessPanel({ articlePublicationController, onArticleCatalo
                   submitLabel="Salvar alterações"
                   onCancelClick={handleCancelEditClick}
                   onImageUpload={handleImageUploadToProject}
+                  onImageDelete={handleImageDeleteFromProject}
+                  reusableUploadedImageUrlCatalog={uploadedImageUrlCatalog}
                 />
               </form>
             ) : (
@@ -1004,6 +1467,8 @@ export function AdminAccessPanel({ articlePublicationController, onArticleCatalo
                   submitLabel="Publicar artigo"
                   onCancelClick={handleCloseArticleModal}
                   onImageUpload={handleImageUploadToProject}
+                  onImageDelete={handleImageDeleteFromProject}
+                  reusableUploadedImageUrlCatalog={uploadedImageUrlCatalog}
                 />
               </form>
             )}
