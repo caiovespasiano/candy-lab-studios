@@ -10,29 +10,49 @@ A branch não é mergeada: ela existe como referencia.
 
 ## 1. Item da sidebar (menu lateral do admin)
 
-Estado ativo:
+A base e a mesma para os dois estados. O que muda quando o item e o atual sao
+apenas cor e peso:
 
 ```jsx
-className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-left bg-inkBlack font-black text-paperWhite"
+<nav aria-label="Seções do painel" className="hidden w-52 shrink-0 lg:block">
+  <ul className="sticky top-24 flex flex-col gap-3">
+    <li>
+      <button
+        type="button"
+        className={`flex w-full items-center gap-2 rounded-lg border-2 border-inkBlack px-3 py-2 text-left text-sm shadow-[4px_4px_0px_0px_#111111] transition-[transform,background-color,color] duration-300 ease-out hover:scale-[1.015] hover:bg-pastelBlue hover:text-inkBlack active:scale-[0.992] ${
+          isCurrentSection
+            ? 'bg-inkBlack font-black text-paperWhite'
+            : 'bg-paperWhite font-bold text-inkBlack/70'
+        }`}
+        aria-current={isCurrentSection ? 'true' : undefined}
+      >
+        <SectionLinkIcon className="h-4 w-4 shrink-0" aria-hidden="true" />
+        <span>{sectionLink.label}</span>
+      </button>
+    </li>
+  </ul>
+</nav>
 ```
 
-Estado inativo:
+Ícone: `react-icons/fa`, tamanho `h-4 w-4 shrink-0`. Estado atual marcado com
+`aria-current="true"` para leitores de tela.
 
-```jsx
-className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-left font-bold text-inkBlack/70 transition-colors hover:bg-inkBlack/5 hover:text-inkBlack"
-```
+**Por que funciona:** `text-sm` fica na classe base e nao dentro do estado. Se
+so o estado inativo tivesse o `text-sm`, o item ativo subiria para 16px e
+mediria 44px contra os 40px dos outros: e esse desalinhamento que faz o menu
+parecer pulsar no hover, porque a lista respira a cada passagem do mouse. Com
+tamanho unico, os tres itens ficam com a mesma altura e o hover pode se limitar
+a escala e a cor.
 
-Ícone usado: `react-icons/fa`, tamanho `h-4 w-4 shrink-0`.
+O hover repete o par do resto do sistema, `hover:scale-[1.015]` e
+`active:scale-[0.992]`, e `transform` entra na lista de transicao para o
+movimento ser animado em vez de instantaneo. A cor de hover e `pastelBlue` tanto
+no item ativo quanto no inativo: o ativo ja tem preenchimento preto, e sem a
+troca de cor nao daria para saber que o mouse esta sobre ele.
 
-```jsx
-<SectionLinkIcon className="h-4 w-4 shrink-0" aria-hidden="true" />
-```
-
-Estado ativo marcado com `aria-current="true"` para leitores de tela.
-
-**Por que funciona:** o contraste vem do preenchimento, nao da borda. `bg-inkBlack`
-com `text-paperWhite` no ativo e cinza suave no inativo. Nao usa borda pesada,
-porque em item de menu ela compete com o texto curto.
+Borda e sombra dura entram aqui ao contrario do resto do painel. Sao tres botoes
+que acompanham a sessao inteira, e a barra lateral e a navegacao principal do
+painel: eles merecem presenca de botao, nao de link de texto.
 
 ---
 
@@ -75,7 +95,7 @@ ao mesmo tempo no hover. `tabular-nums` alinha os digitos entre cartoes.
 | Metricas (4 cards) | `cute-box` — mesmo peso, precisam de presenca |
 | Container de Aparencia | `cute-box no-lift` — bloco unico e importante |
 | Botoes de acao (topo, form, submit) | `cute-button` / `cute-control-button` |
-| Item da sidebar | borda fina ou nenhuma, preenchimento para contraste |
+| Item da sidebar | `border-2` + sombra dura — navegação principal, precisa de presença de botão |
 | Card da lista de artigos | borda 1px em `inkBlack/15`, sem sombra |
 | Camposets e chips | borda 1px, sem sombra |
 | Mensagens de feedback | borda 1px, fundo branco |
