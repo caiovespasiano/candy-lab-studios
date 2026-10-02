@@ -1,21 +1,192 @@
 [
   {
-    "id": "article-backpack-1776564386943",
-    "title": "Backpack",
-    "subtitle": "aa",
-    "description": "sadasd",
-    "imageUrl": "/uploads/1776564378521-water-png-9952bce0.webp",
-    "imageAlternativeText": "Backpack",
+    "id": "mochila-chama-eterna",
+    "title": "Chama Eterna",
+    "subtitle": "Mochila 3D em tons de brasa",
+    "summary": "Mochila 3D em vermelho e laranja com topo escorrido e chamas recortadas. Silhueta arredondada, acabamento em cetim e leitura clara mesmo em segundo plano.",
+    "description": "Mochila 3D em vermelho e laranja, com topo escorrido que simula cera quente e chamas recortadas na alça e na base.\n\nO corpo vermelho com o derrame laranja cria profundidade sem depender de textura — todo o relevo vem da modelagem. As chamas na alça e na base repetem o motivo e dão leitura do asset de longe.\n\nA alça tem fivela em tom terroso e uma peça lateral no mesmo acabamento do corpo, para o detalhe se manter quando o asset é visto de perfil.",
+    "imageUrl": "/uploads/1776563618495-fire-png-0f167316.webp",
+    "imageAlternativeText": "Mochila 3D vermelha com topo escorrido em laranja e chamas na base",
     "galleryImageUrls": [
-      "/uploads/1776564378521-water-png-9952bce0.webp",
-      "/uploads/1776564381362-fire-png-ed266449.webp",
-      "/uploads/1776564384006-natural-png-7eae050d.webp",
-      "/uploads/1776564078295-candy-png-60298ff6.webp"
+      "/uploads/1776563618495-fire-png-0f167316.webp"
     ],
+    "tags": [
+      "Mochila",
+      "Acessório",
+      "Ugc",
+      "Roblox",
+      "Pastel",
+      "Coleção elemental"
+    ],
+    "authoringSoftware": {
+      "name": "Blender",
+      "iconKey": "blender"
+    },
+    "fileFormats": [
+      "FBX",
+      "OBJ",
+      "PNG",
+      "BLEND"
+    ],
+    "purchaseUrl": "",
+    "copyrightNotice": "",
+    "isGeneratedWithArtificialIntelligence": false,
     "likeCount": 0,
     "robuxPrice": 50,
     "isPublished": true,
     "orderIndex": 0,
-    "publishedAtIso": "2026-04-19T04:48:49.149Z"
+    "publishedAtIso": "2026-10-02T02:38:31.865Z"
+  },
+  {
+    "id": "mochila-mare-gelada",
+    "title": "Maré Gelada",
+    "subtitle": "Mochila 3D em tons de gelo",
+    "summary": "Mochila 3D azul-claro com pingos de água em relevo e flocos de neve espalhados pela alça. Base azul-petróleo aumenta o contraste e destaca a silhueta.",
+    "description": "Mochila 3D em azul-claro, com pingos de água em relevo na frente e flocos de neve distribuídos pela alça e pelo corpo.\n\nA base azul-petróleo dá contraste ao corpo claro e destaca a silhueta mesmo em cenário com fundo parecido. Os pingos têm volume suficiente para pegar luz e criar sombra própria.\n\nOs flocos aparecem em três escalas diferentes, o que evita que a superficie fique com aparência de padrão repetido.",
+    "imageUrl": "/uploads/1776564072715-water-png-a0fabdf1.webp",
+    "imageAlternativeText": "Mochila 3D azul-claro com pingos de água e flocos de neve",
+    "galleryImageUrls": [
+      "/uploads/1776564072715-water-png-a0fabdf1.webp"
+    ],
+    "tags": [
+      "Mochila",
+      "Acessório",
+      "Ugc",
+      "Roblox",
+      "Pastel",
+      "Coleção elemental"
+    ],
+    "authoringSoftware": {
+      "name": "Blender",
+      "iconKey": "blender"
+    },
+    "fileFormats": [
+      "FBX",
+      "OBJ",
+      "PNG",
+      "BLEND"
+    ],
+    "purchaseUrl": "",
+    "copyrightNotice": "",
+    "isGeneratedWithArtificialIntelligence": false,
+    "likeCount": 0,
+    "robuxPrice": 50,
+    "isPublished": true,
+    "orderIndex": 1,
+    "publishedAtIso": "2026-10-02T02:38:31.865Z"
+  },
+  {
+    "id": "mochila-broto-vital",
+    "title": "Broto Vital",
+    "subtitle": "Mochila 3D em tons de folha",
+    "summary": "Mochila 3D creme e verde-lima com brotos de alturas variadas saindo do topo e crescendo na base. O acabamento orgânico contrasta com o corpo arredondado.",
+    "description": "Mochila 3D em creme e verde-lima, com brotos e folhas de alturas diferentes saindo do topo e crescendo na base.\n\nO acabamento orgânico contrasta com o corpo arredondado: a silhueta é limpa, mas os brotos quebram o contorno e dão movimento. As folhas usam três tons de verde para não ficarem chapadas.\n\nA base verde-lima acompanha o derrame do topo, fechando a composição e dando base visual para a peça.",
+    "imageUrl": "/uploads/1776563624161-natural-png-7d7af2bf.webp",
+    "imageAlternativeText": "Mochila 3D creme e verde com brotos e folhas saindo do topo",
+    "galleryImageUrls": [
+      "/uploads/1776563624161-natural-png-7d7af2bf.webp"
+    ],
+    "tags": [
+      "Mochila",
+      "Acessório",
+      "Ugc",
+      "Roblox",
+      "Pastel",
+      "Coleção elemental"
+    ],
+    "authoringSoftware": {
+      "name": "Blender",
+      "iconKey": "blender"
+    },
+    "fileFormats": [
+      "FBX",
+      "OBJ",
+      "PNG",
+      "BLEND"
+    ],
+    "purchaseUrl": "",
+    "copyrightNotice": "",
+    "isGeneratedWithArtificialIntelligence": false,
+    "likeCount": 0,
+    "robuxPrice": 50,
+    "isPublished": true,
+    "orderIndex": 2,
+    "publishedAtIso": "2026-10-02T02:38:31.865Z"
+  },
+  {
+    "id": "mochila-doce-nuvem",
+    "title": "Doce Nuvem",
+    "subtitle": "Mochila 3D pastel de confeito",
+    "summary": "Mochila 3D rosa com cobertura creme escorrida, granulado colorido e bengalas de doce. Acabamento em pasta de açúcar remetendo a confeitaria.",
+    "description": "Mochila 3D rosa com cobertura creme escorrida, granulado colorido e bengalas de doce na alça e na base.\n\nA silhueta arredondada e o acabamento em pasta de açúcar remetem a confeitaria. O granulado usa sete cores, espalhadas para não formar padrão.\n\nAs bengalas aparecem dobradas na alça e apoiadas na base, dando profundidade ao conjunto e funcionando como ponto de leitura do tema à distância.",
+    "imageUrl": "/uploads/1776564078295-candy-png-60298ff6.webp",
+    "imageAlternativeText": "Mochila 3D rosa com cobertura creme, granulado colorido e bengalas de doce",
+    "galleryImageUrls": [
+      "/uploads/1776564078295-candy-png-60298ff6.webp"
+    ],
+    "tags": [
+      "Mochila",
+      "Acessório",
+      "Ugc",
+      "Roblox",
+      "Pastel",
+      "Kawaii"
+    ],
+    "authoringSoftware": {
+      "name": "Blender",
+      "iconKey": "blender"
+    },
+    "fileFormats": [
+      "FBX",
+      "OBJ",
+      "PNG",
+      "BLEND"
+    ],
+    "purchaseUrl": "",
+    "copyrightNotice": "",
+    "isGeneratedWithArtificialIntelligence": false,
+    "likeCount": 0,
+    "robuxPrice": 50,
+    "isPublished": true,
+    "orderIndex": 3,
+    "publishedAtIso": "2026-10-02T02:38:31.865Z"
+  },
+  {
+    "id": "mochila-voo-noturno",
+    "title": "Voo Noturno",
+    "subtitle": "Mochila 3D em preto e carmim",
+    "summary": "Mochila 3D preta e vermelha com cobertura carmim escorrida e asas de morcego recortadas. Contraste alto, pensado para cenários noturnos.",
+    "description": "Mochila 3D em preto e vermelho, com cobertura carmim escorrida, asas de morcego recortadas e morcegos em miniatura apoiados na base.\n\nO contraste alto entre preto e carmim funciona bem em cenários noturnos, onde assets de cor clara somem. As asas recortadas aparecem em três posições diferentes na alça e no corpo.\n\nOs morcegos em miniatura na base criam uma segunda camada de leitura e dão escala à peça — o asset parece maior do que é.",
+    "imageUrl": "/uploads/1776564080599-bat-png-530f25c7.webp",
+    "imageAlternativeText": "Mochila 3D preta e vermelha com asas de morcego e cobertura escorrida",
+    "galleryImageUrls": [
+      "/uploads/1776564080599-bat-png-530f25c7.webp"
+    ],
+    "tags": [
+      "Mochila",
+      "Acessório",
+      "Ugc",
+      "Roblox",
+      "Coleção elemental",
+      "Halloween"
+    ],
+    "authoringSoftware": {
+      "name": "Blender",
+      "iconKey": "blender"
+    },
+    "fileFormats": [
+      "FBX",
+      "OBJ",
+      "PNG",
+      "BLEND"
+    ],
+    "purchaseUrl": "",
+    "copyrightNotice": "",
+    "isGeneratedWithArtificialIntelligence": false,
+    "likeCount": 0,
+    "robuxPrice": 50,
+    "isPublished": true,
+    "orderIndex": 4,
+    "publishedAtIso": "2026-10-02T02:38:31.865Z"
   }
 ]
