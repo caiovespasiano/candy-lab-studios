@@ -66,11 +66,35 @@ function resolveEmptyAdminSessionState() {
 const globalEmptyArticleFormState = {
   title: '',
   subtitle: '',
+  summary: '',
   robuxPrice: '0',
   description: '',
   imageUrl: '',
   imageAlternativeText: '',
+  tagsDraftText: '',
+  authoringSoftware: '',
+  fileFormatsDraftText: '',
+  purchaseUrl: '',
+  copyrightNotice: '',
+  isGeneratedWithArtificialIntelligence: false,
 }
+
+const globalAuthoringSoftwareOptionCatalog = [
+  { value: '', label: 'Não informado' },
+  { value: 'blender', label: 'Blender' },
+  { value: 'outro', label: 'Outra ferramenta' },
+]
+
+const globalSuggestedTagCatalog = [
+  'Mochila',
+  'Acessório',
+  'Ugc',
+  'Roblox',
+  'Pastel',
+  'Kawaii',
+  'Props',
+  'Coleção',
+]
 
 const globalAllowedImageMimeTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/avif']
 const globalMaxUploadFileSizeInBytes = 10 * 1024 * 1024
@@ -144,6 +168,16 @@ async function resolvePreferredUploadDataUrl(imageFile) {
   } catch {
     return readImageFileAsDataUrl(imageFile)
   }
+}
+
+function resolveFormAuthoringSoftwareKey(articleAuthoringSoftware) {
+  const storedIconKey = String(articleAuthoringSoftware?.iconKey || '')
+
+  if (storedIconKey && globalAuthoringSoftwareOptionCatalog.some((option) => option.value === storedIconKey)) {
+    return storedIconKey
+  }
+
+  return articleAuthoringSoftware?.name ? 'outro' : ''
 }
 
 function resolveCoverImageUrlFromGallery(galleryImageUrlCatalog) {
@@ -444,6 +478,18 @@ function GalleryUrlEditor({
   )
 }
 
+function AdminFormSection({ title, description, children }) {
+  return (
+    <fieldset className="cute-box no-lift grid min-w-0 gap-3 p-4">
+      <legend className="px-2 text-xs font-black uppercase tracking-widest text-inkBlack">
+        {title}
+      </legend>
+      {description && <p className="text-[11px] font-bold leading-snug text-inkBlack/60">{description}</p>}
+      <div className="grid min-w-0 gap-3">{children}</div>
+    </fieldset>
+  )
+}
+
 function ArticleFormFields({
   formState,
   onInputChange,
@@ -455,74 +501,219 @@ function ArticleFormFields({
   onImageDelete,
   reusableUploadedImageUrlCatalog,
 }) {
+  const enteredTagCatalog = formState.tagsDraftText
+    .split(',')
+    .map((tagValue) => tagValue.trim())
+    .filter(Boolean)
+
   return (
     <div className="grid min-w-0 gap-4">
-      <label className="text-xs font-black uppercase tracking-wider text-inkBlack">
-        Título
-        <input
-          className="cute-input mt-2 w-full"
-          name="title"
-          type="text"
-          value={formState.title}
-          onChange={onInputChange}
-          required
+      <AdminFormSection title="Identificação" description="Aparecem no card do portfolio e no topo da página do produto.">
+        <label className="text-xs font-black uppercase tracking-wider text-inkBlack">
+          Título
+          <input
+            className="cute-input mt-2 w-full"
+            name="title"
+            type="text"
+            value={formState.title}
+            onChange={onInputChange}
+            required
+          />
+        </label>
+
+        <label className="text-xs font-black uppercase tracking-wider text-inkBlack">
+          Subtítulo
+          <input
+            className="cute-input mt-2 w-full"
+            name="subtitle"
+            type="text"
+            value={formState.subtitle}
+            onChange={onInputChange}
+            required
+          />
+        </label>
+
+        <label className="text-xs font-black uppercase tracking-wider text-inkBlack">
+          Resumo curto
+          <textarea
+            className="cute-input mt-2 w-full resize-none"
+            name="summary"
+            rows="2"
+            placeholder="Uma ou duas frases. Vem logo abaixo do preço, na coluna direita."
+            value={formState.summary}
+            onChange={onInputChange}
+          />
+        </label>
+        <p className="text-[11px] font-bold text-inkBlack/60">
+          Se deixar vazio, o subtítulo é usado como resumo.
+        </p>
+      </AdminFormSection>
+
+      <AdminFormSection title="Preço e compra">
+        <label className="text-xs font-black uppercase tracking-wider text-inkBlack">
+          Preço em Robux
+          <input
+            className="cute-input mt-2 w-full"
+            name="robuxPrice"
+            type="number"
+            min="0"
+            step="1"
+            value={formState.robuxPrice}
+            onChange={onInputChange}
+            required
+          />
+        </label>
+
+        <label className="text-xs font-black uppercase tracking-wider text-inkBlack">
+          Link da loja
+          <input
+            className="cute-input mt-2 w-full"
+            name="purchaseUrl"
+            type="url"
+            placeholder="https://www.roblox.com/catalog/..."
+            value={formState.purchaseUrl}
+            onChange={onInputChange}
+          />
+        </label>
+        <p className="cute-box no-lift bg-pastelBlue px-3 py-2 text-[11px] font-bold text-inkBlack">
+          Sem link, o botão aparece como &quot;Indisponível&quot;. Ele nunca abre a loja errada.
+        </p>
+      </AdminFormSection>
+
+      <AdminFormSection
+        title="Mídia"
+        description="A primeira imagem da galeria vira a capa do card automaticamente."
+      >
+        <label className="text-xs font-black uppercase tracking-wider text-inkBlack">
+          Texto alternativo da imagem
+          <input
+            className="cute-input mt-2 w-full"
+            name="imageAlternativeText"
+            type="text"
+            placeholder="Descreva o asset para quem usa leitor de tela"
+            value={formState.imageAlternativeText}
+            onChange={onInputChange}
+          />
+        </label>
+
+        <GalleryUrlEditor
+          galleryImageUrlDraftCatalog={galleryUrlDraftCatalog}
+          onGalleryUrlDraftCatalogChange={onGalleryUrlDraftCatalogChange}
+          onImageUpload={onImageUpload}
+          onImageDelete={onImageDelete}
+          reusableUploadedImageUrlCatalog={reusableUploadedImageUrlCatalog}
         />
-      </label>
-      <label className="text-xs font-black uppercase tracking-wider text-inkBlack">
-        Subtítulo
-        <input
-          className="cute-input mt-2 w-full"
-          name="subtitle"
-          type="text"
-          value={formState.subtitle}
-          onChange={onInputChange}
-          required
-        />
-      </label>
-      <label className="text-xs font-black uppercase tracking-wider text-inkBlack">
-        Preço em Robux
-        <input
-          className="cute-input mt-2 w-full"
-          name="robuxPrice"
-          type="number"
-          min="0"
-          step="1"
-          value={formState.robuxPrice}
-          onChange={onInputChange}
-          required
-        />
-      </label>
-      <p className="rounded-xl border-2 border-inkBlack bg-pastelBlue/35 px-3 py-2 text-xs font-black text-inkBlack">
-        Imagem destaque: a primeira imagem da galeria será usada automaticamente como capa do artigo.
-      </p>
-      <label className="text-xs font-black uppercase tracking-wider text-inkBlack">
-        Texto alternativo da imagem
-        <input
-          className="cute-input mt-2 w-full"
-          name="imageAlternativeText"
-          type="text"
-          value={formState.imageAlternativeText}
-          onChange={onInputChange}
-        />
-      </label>
-      <label className="text-xs font-black uppercase tracking-wider text-inkBlack">
-        Descrição
+      </AdminFormSection>
+
+      <AdminFormSection title="Descrição completa" description="Aparece abaixo da galeria, com quebra de linha preservada.">
         <textarea
-          className="cute-input mt-2 w-full resize-none"
+          className="cute-input w-full resize-y"
           name="description"
-          rows="4"
+          rows="8"
           value={formState.description}
           onChange={onInputChange}
           required
         />
+      </AdminFormSection>
+
+      <AdminFormSection title="Ficha técnica" description="Aparece em três cartões abaixo da descrição.">
+        <label className="text-xs font-black uppercase tracking-wider text-inkBlack">
+          Modelado em
+          <select
+            className="cute-input mt-2 w-full"
+            name="authoringSoftware"
+            value={formState.authoringSoftware}
+            onChange={onInputChange}
+          >
+            {globalAuthoringSoftwareOptionCatalog.map((softwareOption) => (
+              <option key={softwareOption.value} value={softwareOption.value}>
+                {softwareOption.label}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label className="text-xs font-black uppercase tracking-wider text-inkBlack">
+          Formatos dos arquivos
+          <input
+            className="cute-input mt-2 w-full"
+            name="fileFormatsDraftText"
+            type="text"
+            placeholder="FBX, OBJ, PNG, BLEND"
+            value={formState.fileFormatsDraftText}
+            onChange={onInputChange}
+          />
+        </label>
+        <p className="text-[11px] font-bold text-inkBlack/60">Separe por vírgula.</p>
+
+        <label className="text-xs font-black uppercase tracking-wider text-inkBlack">
+          Aviso de copyright
+          <textarea
+            className="cute-input mt-2 w-full resize-none"
+            name="copyrightNotice"
+            rows="2"
+            placeholder="Deixe vazio para usar o aviso padrão do site."
+            value={formState.copyrightNotice}
+            onChange={onInputChange}
+          />
+        </label>
+      </AdminFormSection>
+
+      <AdminFormSection title="Tags">
+        <label className="text-xs font-black uppercase tracking-wider text-inkBlack">
+          Tags
+          <input
+            className="cute-input mt-2 w-full"
+            name="tagsDraftText"
+            type="text"
+            placeholder="mochila, ugc, pastel"
+            value={formState.tagsDraftText}
+            onChange={onInputChange}
+          />
+        </label>
+        <p className="text-[11px] font-bold text-inkBlack/60">
+          Separe por vírgula. Duplicadas são removidas ao salvar.
+        </p>
+        {enteredTagCatalog.length > 0 && (
+          <ul className="flex flex-wrap gap-1.5">
+            {enteredTagCatalog.map((tagValue) => (
+              <li
+                key={tagValue}
+                className="cute-control-button px-2.5 py-0.5 text-[11px] font-black text-inkBlack"
+              >
+                {tagValue}
+              </li>
+            ))}
+          </ul>
+        )}
+        <p className="flex flex-wrap gap-1.5">
+          {globalSuggestedTagCatalog.map((suggestedTag) => (
+            <span
+              key={suggestedTag}
+              className="cute-input inline-block w-auto px-2.5 py-0.5 text-[11px] font-bold text-inkBlack/60"
+            >
+              {suggestedTag}
+            </span>
+          ))}
+        </p>
+      </AdminFormSection>
+
+      <label className="cute-box no-lift flex cursor-pointer items-start gap-3 bg-pastelYellow p-3">
+        <input
+          className="mt-0.5 h-4 w-4 shrink-0"
+          name="isGeneratedWithArtificialIntelligence"
+          type="checkbox"
+          checked={formState.isGeneratedWithArtificialIntelligence}
+          onChange={onInputChange}
+        />
+        <span className="text-xs font-bold leading-snug text-inkBlack">
+          Este asset foi gerado com inteligência artificial.
+          <span className="block font-black uppercase tracking-wide text-inkBlack/60">
+            Deixe desmarcado para exibir &quot;modelado manualmente&quot;.
+          </span>
+        </span>
       </label>
-      <GalleryUrlEditor
-        galleryImageUrlDraftCatalog={galleryUrlDraftCatalog}
-        onGalleryUrlDraftCatalogChange={onGalleryUrlDraftCatalogChange}
-        onImageUpload={onImageUpload}
-        onImageDelete={onImageDelete}
-        reusableUploadedImageUrlCatalog={reusableUploadedImageUrlCatalog}
-      />
+
       <div className="flex min-w-0 gap-3 pt-1">
         <button type="submit" className="cute-button flex flex-1 items-center justify-center gap-2 bg-pastelMint">
           <FaPlus aria-hidden="true" />
@@ -549,38 +740,43 @@ const ArticleReorderItem = memo(function ArticleReorderItem({ articleData, onDra
       onDragStart={onDragStart}
       onDragEnd={onDragEnd}
       dragMomentum={false}
-      className="relative list-none rounded-xl border-4 border-inkBlack bg-paperWhite shadow-[6px_6px_0px_0px_#111111] cursor-grab p-4 active:cursor-grabbing"
+      className="cute-box no-lift relative list-none p-4"
     >
-      <header className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <FaGripVertical
-            className="shrink-0 text-inkBlack/30"
-            aria-hidden="true"
-            title="Arraste para reordenar"
-          />
-          <div>
-            <h3 className="text-lg font-display text-inkBlack">{articleData.title}</h3>
-            <p className="text-xs font-bold uppercase tracking-wider text-inkBlack/70">
-              {articleData.subtitle}
-            </p>
+      <header className="flex flex-wrap items-start justify-between gap-3">
+        <div className="flex min-w-0 items-start gap-3">
+          <button
+            type="button"
+            className="mt-0.5 cursor-grab text-inkBlack/40 transition-colors hover:text-inkBlack active:cursor-grabbing"
+            aria-label={`Arrastar para reordenar ${articleData.title}`}
+          >
+            <FaGripVertical className="h-5 w-5" aria-hidden="true" />
+          </button>
+
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <h3 className="truncate text-base font-black text-inkBlack">{articleData.title}</h3>
+              <span className="cute-control-button shrink-0 px-3 py-0.5 text-[10px] uppercase tracking-wide">
+                {articleData.isPublished ? 'Publicado' : 'Rascunho'}
+              </span>
+            </div>
+            <p className="truncate text-xs font-bold text-inkBlack/60">{articleData.subtitle}</p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          {articleData.galleryImageUrls?.length > 0 && (
-            <span className="rounded-lg border-2 border-inkBlack bg-pastelBlue px-2 py-1 text-xs font-black uppercase">
-              {articleData.galleryImageUrls.length} foto
-              {articleData.galleryImageUrls.length !== 1 ? 's' : ''}
-            </span>
-          )}
-          <span className="rounded-lg border-2 border-inkBlack bg-pastelYellow px-2 py-1 text-xs font-black uppercase">
-            {articleData.isPublished ? 'Publicado' : 'Oculto'}
+
+        <div className="flex shrink-0 items-center gap-3 text-xs font-black text-inkBlack/70">
+          <span className="flex items-center gap-1 tabular-nums">
+            {Number(articleData.robuxPrice ?? 0)}
+            <span className="font-bold uppercase text-inkBlack/50">rbx</span>
+          </span>
+          <span className="tabular-nums">
+            {articleData.galleryImageUrls?.length ?? 0} img
           </span>
         </div>
       </header>
       <div className="mt-4 flex flex-wrap gap-2">
         <button
           type="button"
-          className="cute-button flex h-10 items-center justify-center gap-1 bg-pastelYellow px-4 py-1 text-xs"
+          className="cute-button h-8 gap-1.5 px-4 text-xs sm:px-4 sm:py-1 sm:text-xs"
           onClick={() => onEdit(articleData)}
         >
           <FaEdit aria-hidden="true" />
@@ -588,14 +784,14 @@ const ArticleReorderItem = memo(function ArticleReorderItem({ articleData, onDra
         </button>
         <button
           type="button"
-          className="cute-button h-10 bg-pastelMint px-4 py-1 text-xs"
+          className="cute-button cute-button-share h-8 px-4 text-xs sm:px-4 sm:py-1 sm:text-xs"
           onClick={() => onToggleVisibility(articleData.id)}
         >
-          {articleData.isPublished ? 'Ocultar' : 'Publicar'}
+          {articleData.isPublished ? 'Despublicar' : 'Publicar'}
         </button>
         <button
           type="button"
-          className="cute-button flex h-10 items-center justify-center gap-1 bg-pastelPink px-4 py-1 text-xs"
+          className="cute-control-button h-8 gap-1.5 px-4 text-xs"
           onClick={() => onDelete(articleData.id)}
         >
           <FaTrash aria-hidden="true" />
@@ -953,8 +1149,44 @@ export function AdminAccessPanel({ articlePublicationController, onArticleCatalo
   }
 
   function handleCreationFormInputChange(event) {
-    const { name, value } = event.target
-    setArticleCreationFormState((currentState) => ({ ...currentState, [name]: value }))
+    const { name, type, checked, value } = event.target
+    const nextValue = type === 'checkbox' ? checked : value
+    setArticleCreationFormState((currentState) => ({ ...currentState, [name]: nextValue }))
+  }
+
+  function buildArticleInputFromFormState(formState, coverImageUrl, galleryImageUrlCatalog) {
+    const authoringSoftwareKey = String(formState.authoringSoftware || '').trim()
+    const matchedAuthoringSoftwareOption = globalAuthoringSoftwareOptionCatalog.find(
+      (softwareOption) => softwareOption.value === authoringSoftwareKey
+    )
+
+    return {
+      title: formState.title,
+      subtitle: formState.subtitle,
+      summary: formState.summary,
+      description: formState.description,
+      robuxPrice: formState.robuxPrice,
+      imageAlternativeText: formState.imageAlternativeText,
+      imageUrl: coverImageUrl,
+      galleryImageUrls: galleryImageUrlCatalog,
+      tags: String(formState.tagsDraftText || '')
+        .split(',')
+        .map((tagValue) => tagValue.trim())
+        .filter(Boolean),
+      authoringSoftware: {
+        name: authoringSoftwareKey && authoringSoftwareKey !== 'outro'
+          ? matchedAuthoringSoftwareOption?.label || ''
+          : formState.authoringSoftwareDetail || '',
+        iconKey: authoringSoftwareKey === 'outro' ? '' : authoringSoftwareKey,
+      },
+      fileFormats: String(formState.fileFormatsDraftText || '')
+        .split(',')
+        .map((fileFormatValue) => fileFormatValue.trim())
+        .filter(Boolean),
+      purchaseUrl: formState.purchaseUrl,
+      copyrightNotice: formState.copyrightNotice,
+      isGeneratedWithArtificialIntelligence: formState.isGeneratedWithArtificialIntelligence,
+    }
   }
 
   async function handleArticleCreationSubmission(event) {
@@ -964,11 +1196,7 @@ export function AdminAccessPanel({ articlePublicationController, onArticleCatalo
     const coverImageUrl = resolveCoverImageUrlFromGallery(creationGalleryUrlDraftCatalog)
 
     const articleCreationResult = articlePublicationController.createArticle(
-      {
-        ...articleCreationFormState,
-        imageUrl: coverImageUrl,
-        galleryImageUrls: creationGalleryUrlDraftCatalog,
-      },
+      buildArticleInputFromFormState(articleCreationFormState, coverImageUrl, creationGalleryUrlDraftCatalog),
       'admin-article-creation-flow'
     )
 
@@ -1030,12 +1258,20 @@ export function AdminAccessPanel({ articlePublicationController, onArticleCatalo
   function handleEditArticleClick(articleData) {
     setEditingArticleIdentifier(articleData.id)
     setArticleEditFormState({
+      ...globalEmptyArticleFormState,
       title: articleData.title,
       subtitle: articleData.subtitle,
+      summary: articleData.summary,
       robuxPrice: String(articleData.robuxPrice ?? 0),
       description: articleData.description,
       imageUrl: articleData.imageUrl,
       imageAlternativeText: articleData.imageAlternativeText,
+      tagsDraftText: (articleData.tags ?? []).join(', '),
+      authoringSoftware: resolveFormAuthoringSoftwareKey(articleData.authoringSoftware),
+      fileFormatsDraftText: (articleData.fileFormats ?? []).join(', '),
+      purchaseUrl: articleData.purchaseUrl ?? '',
+      copyrightNotice: articleData.copyrightNotice ?? '',
+      isGeneratedWithArtificialIntelligence: Boolean(articleData.isGeneratedWithArtificialIntelligence),
     })
     setEditGalleryUrlDraftCatalog([...(articleData.galleryImageUrls ?? [])])
     setArticleFeedbackMessage('')
@@ -1047,8 +1283,9 @@ export function AdminAccessPanel({ articlePublicationController, onArticleCatalo
   }
 
   function handleEditFormInputChange(event) {
-    const { name, value } = event.target
-    setArticleEditFormState((currentState) => ({ ...currentState, [name]: value }))
+    const { name, type, checked, value } = event.target
+    const nextValue = type === 'checkbox' ? checked : value
+    setArticleEditFormState((currentState) => ({ ...currentState, [name]: nextValue }))
   }
 
   async function handleArticleEditSubmission(event) {
@@ -1059,11 +1296,7 @@ export function AdminAccessPanel({ articlePublicationController, onArticleCatalo
 
     const articleUpdateResult = articlePublicationController.updateArticle(
       editingArticleIdentifier,
-      {
-        ...articleEditFormState,
-        imageUrl: coverImageUrl,
-        galleryImageUrls: editGalleryUrlDraftCatalog,
-      },
+      buildArticleInputFromFormState(articleEditFormState, coverImageUrl, editGalleryUrlDraftCatalog),
       'admin-article-edit-flow'
     )
 
@@ -1174,29 +1407,33 @@ export function AdminAccessPanel({ articlePublicationController, onArticleCatalo
     ? new Date(adminSessionState.sessionExpiresAtInSeconds * 1000).toLocaleString('pt-BR')
     : '-'
 
-  return (
-    <main className="mx-auto w-full max-w-5xl px-4 py-10 sm:px-8">
-      <header className="cute-box mb-8 flex flex-wrap items-center justify-between gap-4 bg-paperWhite px-6 py-5">
-        <div>
-          <h1 className="text-3xl font-display text-inkBlack">Painel Admin Privado</h1>
-          <p className="text-sm font-bold text-inkBlack/80">
-            Acesso protegido por login, senha e código de verificação em duas etapas.
-          </p>
-        </div>
-        <button
-          type="button"
-          className="cute-button flex h-11 items-center justify-center gap-2 bg-pastelBlue px-5 py-2 text-sm"
-          onClick={onNavigateBackToLanding}
-        >
-          <FaArrowLeft aria-hidden="true" />
-          <span>Voltar para o início</span>
-        </button>
-      </header>
+  const publishedArticleCount = currentSortOrderRef.current.filter((article) => article.isPublished).length
+  const draftArticleCount = currentSortOrderRef.current.length - publishedArticleCount
+  const totalGalleryImageCount = currentSortOrderRef.current.reduce(
+    (runningTotal, article) => runningTotal + (article.galleryImageUrls?.length ?? 0),
+    0
+  )
 
-      {!adminSessionState.isAuthenticated ? (
-        <section className="cute-box bg-pastelPink p-6 sm:p-8" aria-labelledby="adminAccessHeading">
-          <h2 id="adminAccessHeading" className="text-2xl font-display text-inkBlack">Autenticação Administrativa</h2>
-          <form className="mt-6 grid gap-5" onSubmit={handleAdminAuthenticationSubmission}>
+  if (!adminSessionState.isAuthenticated) {
+    return (
+      <main className="flex min-h-screen w-full items-center justify-center bg-pastelBlue px-4 py-12">
+        <section
+          className="cute-box no-lift w-full max-w-md p-6 sm:p-8"
+          aria-labelledby="adminAccessHeading"
+        >
+          <div className="mb-6 flex flex-col items-center text-center">
+            <span className="cute-control-button mb-4 h-14 w-14">
+              <FaLock className="h-6 w-6 text-inkBlack" aria-hidden="true" />
+            </span>
+            <h1 id="adminAccessHeading" className="text-2xl font-black text-inkBlack">
+              Área restrita
+            </h1>
+            <p className="mt-1 text-sm font-bold text-inkBlack/70">
+              Login, senha e código de verificação em duas etapas.
+            </p>
+          </div>
+
+          <form className="grid gap-4" onSubmit={handleAdminAuthenticationSubmission}>
             <label className="text-xs font-black uppercase tracking-wider text-inkBlack">
               Usuário
               <input
@@ -1205,7 +1442,6 @@ export function AdminAccessPanel({ articlePublicationController, onArticleCatalo
                 type="text"
                 value={adminCredentialsFormState.username}
                 onChange={handleAdminCredentialsInputChange}
-                placeholder="admin"
                 autoComplete="username"
                 required
               />
@@ -1219,7 +1455,6 @@ export function AdminAccessPanel({ articlePublicationController, onArticleCatalo
                 type="password"
                 value={adminCredentialsFormState.password}
                 onChange={handleAdminCredentialsInputChange}
-                placeholder="********"
                 autoComplete="current-password"
                 required
               />
@@ -1233,43 +1468,133 @@ export function AdminAccessPanel({ articlePublicationController, onArticleCatalo
                 type="password"
                 value={adminCredentialsFormState.verificationCode}
                 onChange={handleAdminCredentialsInputChange}
-                placeholder="0000"
                 autoComplete="one-time-code"
                 required
               />
             </label>
 
-            <button type="submit" className="cute-button mt-2 flex items-center justify-center gap-2 bg-pastelMint">
+            <button type="submit" className="cute-button mt-1 flex h-11 items-center justify-center gap-2 bg-pastelMint">
               <FaLock aria-hidden="true" />
-              <span>Acessar painel</span>
+              <span>Entrar no painel</span>
             </button>
           </form>
 
           {adminFeedbackMessage ? (
-            <p className="cute-box mt-5 bg-paperWhite px-4 py-3 text-sm font-black text-inkBlack" role="status">
+            <p className="cute-box no-lift mt-4 bg-pastelYellow px-4 py-3 text-sm font-black text-inkBlack" role="status">
               {adminFeedbackMessage}
             </p>
           ) : null}
-        </section>
-      ) : (
-        <section className="grid gap-6" aria-label="Configurações administrativas">
-          <article className="cute-box bg-paperWhite p-6 sm:p-8">
-            <h2 className="text-2xl font-display text-inkBlack">Sessão ativa</h2>
-            <p className="mt-2 text-sm font-bold text-inkBlack/80">Administrador: {adminSessionState.username}</p>
-            <p className="mt-1 text-sm font-bold text-inkBlack/80">Expira em: {adminSessionExpiresAtLabel}</p>
 
+          <button
+            type="button"
+            className="mt-6 flex w-full items-center justify-center gap-2 text-xs font-bold text-inkBlack/60 transition-colors hover:text-inkBlack"
+            onClick={onNavigateBackToLanding}
+          >
+            <FaArrowLeft aria-hidden="true" />
+            <span>Voltar para o site</span>
+          </button>
+        </section>
+      </main>
+    )
+  }
+
+  return (
+    <div className="min-h-screen w-full bg-paperWhite">
+      <header className="sticky top-0 z-30 border-b-4 border-inkBlack bg-paperWhite">
+        <div className="mx-auto flex w-full max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6">
+          <div className="flex items-center gap-3">
+            <span className="cute-control-button h-9 w-9">
+              <FaLock className="h-4 w-4 text-inkBlack" aria-hidden="true" />
+            </span>
+            <div>
+              <h1 className="text-base font-black leading-tight text-inkBlack">Painel de Administração</h1>
+              <p className="text-xs font-bold text-inkBlack/60">
+                {adminSessionState.username} · expira {adminSessionExpiresAtLabel}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
             <button
               type="button"
-              className="cute-button mt-5 flex items-center justify-center gap-2 bg-pastelPink px-5 py-2 text-sm"
+              className="cute-button h-9 gap-1.5 px-4 text-xs sm:px-4 sm:py-1 sm:text-xs"
+              onClick={onNavigateBackToLanding}
+            >
+              <FaArrowLeft aria-hidden="true" />
+              <span className="hidden sm:inline">Ver site</span>
+            </button>
+            <button
+              type="button"
+              className="cute-control-button h-9 gap-1.5 px-4 text-xs"
               onClick={handleAdminLogoutClick}
             >
               <FaSignOutAlt aria-hidden="true" />
-              <span>Encerrar sessão</span>
+              <span className="hidden sm:inline">Sair</span>
             </button>
-          </article>
+          </div>
+        </div>
+      </header>
 
-          <article className="cute-box bg-pastelYellow p-6 sm:p-8">
-            <h2 className="text-2xl font-display text-inkBlack">Personalização global</h2>
+      <div className="mx-auto flex w-full max-w-7xl gap-6 px-4 py-6 sm:px-6">
+        <nav aria-label="Seções do painel" className="hidden w-52 shrink-0 lg:block">
+          <ul className="sticky top-24 flex flex-col gap-1">
+            <li>
+              <a
+                href="#admin-overview"
+                className="cute-control-button gap-2 px-3 py-2 text-sm font-black text-inkBlack"
+                aria-current="page"
+              >
+                <FaGripVertical className="h-4 w-4" aria-hidden="true" />
+                <span>Visão geral</span>
+              </a>
+            </li>
+            <li>
+              <a
+                href="#admin-articles"
+                className="cute-control-button gap-2 px-3 py-2 text-sm font-bold text-inkBlack"
+              >
+                <FaEdit className="h-4 w-4" aria-hidden="true" />
+                <span>Artigos</span>
+              </a>
+            </li>
+            <li>
+              <a
+                href="#admin-appearance"
+                className="cute-control-button gap-2 px-3 py-2 text-sm font-bold text-inkBlack"
+              >
+                <FaImages className="h-4 w-4" aria-hidden="true" />
+                <span>Aparência</span>
+              </a>
+            </li>
+          </ul>
+        </nav>
+
+        <main id="admin-overview" className="min-w-0 flex-1">
+          <section aria-labelledby="adminMetricsHeading" className="mb-6">
+            <h2 id="adminMetricsHeading" className="sr-only">Métricas do catálogo</h2>
+
+            <dl className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+              {[
+                { label: 'Publicados', value: publishedArticleCount },
+                { label: 'Rascunhos', value: draftArticleCount },
+                { label: 'Imagens', value: totalGalleryImageCount },
+                { label: 'Total', value: currentSortOrderRef.current.length },
+              ].map((metric) => (
+                <div key={metric.label} className="cute-box no-lift px-4 py-3">
+                  <dt className="text-[10px] font-black uppercase tracking-widest text-inkBlack/70">
+                    {metric.label}
+                  </dt>
+                  <dd className="mt-1 text-3xl font-black tabular-nums leading-none text-inkBlack">
+                    {metric.value}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          </section>
+
+          <div className="grid gap-6">
+          <section id="admin-appearance" className="cute-box no-lift scroll-mt-24 p-6 sm:p-8" aria-labelledby="adminAppearanceHeading">
+            <h2 id="adminAppearanceHeading" className="text-2xl font-display text-inkBlack">Aparência do site</h2>
             <p className="mt-2 text-sm font-bold text-inkBlack/80">
               Defina cor e imagem de fundo padrão da landing page. A alteração é aplicada imediatamente.
             </p>
@@ -1283,7 +1608,7 @@ export function AdminAccessPanel({ articlePublicationController, onArticleCatalo
                 onChange={handleBackgroundHexColorChange}
                 aria-label="Cor de fundo global da landing"
               />
-              <span className="rounded-xl border-2 border-inkBlack bg-paperWhite px-3 py-1 text-sm font-black normal-case tracking-normal">
+              <span className="cute-input inline-block w-auto px-3 py-1 text-sm font-black normal-case tracking-normal">
                 {globalBackgroundHexColor}
               </span>
             </label>
@@ -1297,7 +1622,7 @@ export function AdminAccessPanel({ articlePublicationController, onArticleCatalo
                 onChange={handleGlobalYellowThemeHexColorChange}
                 aria-label="Cor global do tema"
               />
-              <span className="rounded-xl border-2 border-inkBlack bg-paperWhite px-3 py-1 text-sm font-black normal-case tracking-normal">
+              <span className="cute-input inline-block w-auto px-3 py-1 text-sm font-black normal-case tracking-normal">
                 {globalYellowThemeHexColor}
               </span>
             </label>
@@ -1331,8 +1656,8 @@ export function AdminAccessPanel({ articlePublicationController, onArticleCatalo
                           type="button"
                           onClick={() => handleBackgroundImagePreviewSelection(uploadedImageUrl)}
                           className={
-                            `w-full overflow-hidden rounded-xl border-4 bg-paperWhite p-0 `
-                            + `${isSelectedBackgroundImage ? 'border-inkBlack' : 'border-inkBlack/30'}`
+                            `cute-box w-full overflow-hidden p-0 `
+                            + `${isSelectedBackgroundImage ? '' : 'no-lift'}`
                           }
                           aria-label={`Selecionar ${uploadedImageUrl} como imagem de fundo`}
                           title={uploadedImageUrl}
@@ -1367,19 +1692,23 @@ export function AdminAccessPanel({ articlePublicationController, onArticleCatalo
                 Cor Sólida
               </button>
             </div>
-          </article>
+          </section>
 
-          <article className="cute-box bg-pastelBlue p-6 sm:p-8">
+          <section
+            id="admin-articles"
+            className="cute-box scroll-mt-24 bg-paperWhite p-6 sm:p-8"
+            aria-labelledby="adminArticlesHeading"
+          >
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div>
-                <h2 className="text-2xl font-display text-inkBlack">Publicação de artigos</h2>
-                <p className="mt-1 text-sm font-bold text-inkBlack/80">
-                  Crie, edite, publique, oculte, reordene arrastando e remova artigos.
+                <h2 id="adminArticlesHeading" className="text-2xl font-display text-inkBlack">Artigos</h2>
+                <p className="mt-1 text-sm font-bold text-inkBlack/70">
+                  Arraste pela alça para reordenar. A ordem define a sequência na landing page.
                 </p>
               </div>
               <button
                 type="button"
-                className="cute-button flex items-center justify-center gap-2 bg-pastelMint px-5 py-2 text-sm"
+                className="cute-button flex h-10 items-center justify-center gap-2 bg-pastelMint px-4 text-sm"
                 onClick={handleOpenArticleCreationModal}
               >
                 <FaPlus aria-hidden="true" />
@@ -1388,34 +1717,44 @@ export function AdminAccessPanel({ articlePublicationController, onArticleCatalo
             </div>
 
             {articleFeedbackMessage ? (
-              <p className="cute-box mt-4 bg-paperWhite px-4 py-3 text-sm font-black text-inkBlack" role="status">
+              <p
+                className="cute-box no-lift mt-4 bg-pastelYellow px-4 py-3 text-sm font-black text-inkBlack"
+                role="status"
+              >
                 {articleFeedbackMessage}
               </p>
             ) : null}
 
-            <Reorder.Group
-              as="ul"
-              axis="y"
-              values={sortableArticleCatalog}
-              onReorder={handleSortableReorder}
-              className="mt-6 flex flex-col gap-3"
-              aria-label="Lista de artigos"
-            >
-              {sortableArticleCatalog.map((articleData) => (
-                <ArticleReorderItem
-                  key={articleData.id}
-                  articleData={articleData}
-                  onDragStart={handleItemDragStart}
-                  onDragEnd={handleItemDragEnd}
-                  onEdit={handleEditArticleClick}
-                  onToggleVisibility={handleArticleVisibilityToggle}
-                  onDelete={handleArticleDeletion}
-                />
-              ))}
-            </Reorder.Group>
-          </article>
-        </section>
-      )}
+            {sortableArticleCatalog.length === 0 ? (
+              <p className="cute-box no-lift mt-6 px-4 py-10 text-center text-sm font-bold text-inkBlack/60">
+                Nenhum artigo ainda. Use &quot;Novo artigo&quot; para criar o primeiro.
+              </p>
+            ) : (
+              <Reorder.Group
+                as="ul"
+                axis="y"
+                values={sortableArticleCatalog}
+                onReorder={handleSortableReorder}
+                className="mt-6 flex flex-col gap-2"
+                aria-label="Lista de artigos"
+              >
+                {sortableArticleCatalog.map((articleData) => (
+                  <ArticleReorderItem
+                    key={articleData.id}
+                    articleData={articleData}
+                    onDragStart={handleItemDragStart}
+                    onDragEnd={handleItemDragEnd}
+                    onEdit={handleEditArticleClick}
+                    onToggleVisibility={handleArticleVisibilityToggle}
+                    onDelete={handleArticleDeletion}
+                  />
+                ))}
+              </Reorder.Group>
+            )}
+          </section>
+          </div>
+        </main>
+      </div>
 
       {isArticleModalOpen && (
         <div
@@ -1481,6 +1820,6 @@ export function AdminAccessPanel({ articlePublicationController, onArticleCatalo
           </article>
         </div>
       )}
-    </main>
+    </div>
   )
 }

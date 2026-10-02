@@ -8,6 +8,9 @@ import { globalPortfolioProjectCatalog } from '../src/constants/globalPortfolioC
 const globalMaxArticlesPerCatalog = 200
 const globalMaxTextLength = 500
 const globalMaxDescriptionLength = 4000
+const globalMaxTagLength = 40
+const globalMaxTagsPerArticle = 12
+const globalMaxFileFormatsPerArticle = 8
 const globalMaxUrlLength = 2048
 const globalMaxGalleryImagesPerArticle = 20
 const globalMaxArticleCatalogPayloadBytes = 512 * 1024
@@ -138,6 +141,43 @@ function normalizeRobuxPrice(rawRobuxPrice) {
   return Number.isInteger(normalizedRobuxPrice) && normalizedRobuxPrice >= 0 ? normalizedRobuxPrice : 0
 }
 
+function sanitizeShortTextCatalog(rawCatalog, maxEntryCount) {
+  if (!Array.isArray(rawCatalog)) {
+    return []
+  }
+
+  return rawCatalog
+    .slice(0, maxEntryCount)
+    .map((rawEntryValue) => sanitizeTextValue(rawEntryValue, globalMaxTagLength))
+    .filter((sanitizedEntryValue) => sanitizedEntryValue.length > 0)
+}
+
+function sanitizeTagCatalog(rawTagCatalog) {
+  const seenTagSet = new Set()
+
+  return sanitizeShortTextCatalog(rawTagCatalog, globalMaxTagsPerArticle).filter((sanitizedTagValue) => {
+    const tagLookupKey = sanitizedTagValue.toLowerCase()
+
+    if (seenTagSet.has(tagLookupKey)) {
+      return false
+    }
+
+    seenTagSet.add(tagLookupKey)
+    return true
+  })
+}
+
+function sanitizeFileFormatCatalog(rawFileFormatCatalog) {
+  return sanitizeShortTextCatalog(rawFileFormatCatalog, globalMaxFileFormatsPerArticle)
+}
+
+function sanitizeAuthoringSoftware(rawAuthoringSoftware) {
+  return {
+    name: sanitizeTextValue(rawAuthoringSoftware?.name, globalMaxTagLength),
+    iconKey: sanitizeTextValue(rawAuthoringSoftware?.iconKey, globalMaxTagLength).toLowerCase(),
+  }
+}
+
 function validateArticleCatalogPayload(articleCatalog) {
   if (!Array.isArray(articleCatalog)) {
     return
@@ -158,10 +198,17 @@ function createSeedArticleCatalogForPersistence() {
       id: normalizedIdentifier,
       title: sanitizeTextValue(articleData.title),
       subtitle: sanitizeTextValue(articleData.subtitle),
+      summary: sanitizeTextValue(articleData.summary || articleData.subtitle),
       description: sanitizeTextValue(articleData.description, globalMaxDescriptionLength),
       imageUrl: sanitizeUrlValue(articleData.imageUrl),
       imageAlternativeText: sanitizeTextValue(articleData.imageAlternativeText || articleData.title),
       galleryImageUrls: sanitizeGalleryUrlCatalog(articleData.galleryImageUrls),
+      tags: sanitizeTagCatalog(articleData.tags),
+      authoringSoftware: sanitizeAuthoringSoftware(articleData.authoringSoftware),
+      fileFormats: sanitizeFileFormatCatalog(articleData.fileFormats),
+      purchaseUrl: sanitizeUrlValue(articleData.purchaseUrl),
+      copyrightNotice: sanitizeTextValue(articleData.copyrightNotice, globalMaxDescriptionLength),
+      isGeneratedWithArtificialIntelligence: Boolean(articleData.isGeneratedWithArtificialIntelligence),
       likeCount: Number.isInteger(articleData.likeCount) ? articleData.likeCount : 0,
       robuxPrice: normalizeRobuxPrice(articleData.robuxPrice),
       isPublished: true,
@@ -183,10 +230,17 @@ function normalizeArticleCatalogForPersistence(articleCatalog) {
       id: sanitizeTextValue(articleData.id || `article-${articleIndex + 1}`),
       title: sanitizeTextValue(articleData.title),
       subtitle: sanitizeTextValue(articleData.subtitle),
+      summary: sanitizeTextValue(articleData.summary || articleData.subtitle),
       description: sanitizeTextValue(articleData.description, globalMaxDescriptionLength),
       imageUrl: sanitizeUrlValue(articleData.imageUrl),
       imageAlternativeText: sanitizeTextValue(articleData.imageAlternativeText || articleData.title),
       galleryImageUrls: sanitizeGalleryUrlCatalog(articleData.galleryImageUrls),
+      tags: sanitizeTagCatalog(articleData.tags),
+      authoringSoftware: sanitizeAuthoringSoftware(articleData.authoringSoftware),
+      fileFormats: sanitizeFileFormatCatalog(articleData.fileFormats),
+      purchaseUrl: sanitizeUrlValue(articleData.purchaseUrl),
+      copyrightNotice: sanitizeTextValue(articleData.copyrightNotice, globalMaxDescriptionLength),
+      isGeneratedWithArtificialIntelligence: Boolean(articleData.isGeneratedWithArtificialIntelligence),
       likeCount: Number.isInteger(articleData.likeCount) && articleData.likeCount >= 0 ? articleData.likeCount : 0,
       robuxPrice: normalizeRobuxPrice(articleData.robuxPrice),
       isPublished: Boolean(articleData.isPublished),
