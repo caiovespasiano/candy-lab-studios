@@ -1546,7 +1546,7 @@ export function AdminAccessPanel({ articlePublicationController, onArticleCatalo
 
       <div className="mx-auto flex w-full max-w-7xl gap-6 px-4 py-6 sm:px-6">
         <nav aria-label="Seções do painel" className="hidden w-52 shrink-0 lg:block">
-          <ul className="sticky top-24 flex flex-col gap-1">
+          <ul className="sticky top-24 flex flex-col gap-3">
             {[
               { label: 'Visão geral', targetId: 'admin-overview', IconComponent: FaGripVertical },
               { label: 'Artigos', targetId: 'admin-articles', IconComponent: FaEdit },
@@ -1559,10 +1559,10 @@ export function AdminAccessPanel({ articlePublicationController, onArticleCatalo
                 <li key={sectionLink.targetId}>
                   <button
                     type="button"
-                    className={`flex w-full items-center gap-2 rounded-lg border border-inkBlack px-3 py-2 text-sm text-left ${
+                    className={`flex w-full items-center gap-2 rounded-lg border-2 border-inkBlack px-3 py-2 text-left shadow-[4px_4px_0px_0px_#111111] ${
                       isCurrentSection
                         ? 'bg-inkBlack font-black text-paperWhite'
-                        : 'bg-paperWhite font-bold text-inkBlack/70 transition-colors hover:bg-inkBlack/5 hover:text-inkBlack'
+                        : 'bg-paperWhite text-sm font-bold text-inkBlack/70 transition-colors hover:bg-pastelBlue hover:text-inkBlack'
                     }`}
                     onClick={() => handleAdminSectionNavigation(sectionLink.targetId)}
                     aria-current={isCurrentSection ? 'true' : undefined}
@@ -1703,7 +1703,7 @@ export function AdminAccessPanel({ articlePublicationController, onArticleCatalo
 
           <section
             id="admin-articles"
-            className="scroll-mt-24 rounded-xl border border-inkBlack/15 bg-paperWhite p-6 sm:p-8"
+            className="cute-box no-lift scroll-mt-24 p-6 sm:p-8"
             aria-labelledby="adminArticlesHeading"
           >
             <div className="flex flex-wrap items-center justify-between gap-4">
