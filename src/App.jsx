@@ -31,6 +31,7 @@ import {
 import { internalRuntimeStorage } from './services/internalRuntimeStorageService'
 import { loadPersistedArticleCatalogFromProject, loadProjectPreferencesFromProject } from './services/projectPersistenceGatewayService'
 import { submitContactMessageUsingGateway } from './services/contactSubmissionService'
+import { globalDefaultLanguageCode, resolveTranslationText } from './services/translationResolverService'
 import globalTranslationsByLanguageCode from './constants/i18n/translations.json'
 
 const LazyAdminAccessPanel = lazy(() => import('./components/AdminAccessPanel').then((adminAccessPanelModule) => ({
@@ -121,45 +122,11 @@ const globalFloatingCandyMaximumRotationInDegrees = 45
 const globalSessionLikeCountByIdentifierStorageKey = 'dimi3d.likeCountByIdentifier'
 const globalSessionLikedProjectIdentifierCatalogStorageKey = 'dimi3d.likedProjectIdentifierCatalog'
 const globalCurrentLanguageCodeStorageKey = 'dimi3d.currentLanguageCode'
-const globalDefaultLanguageCode = 'ptBR'
 const globalLanguageOptionCatalog = [
   { code: 'ptBR', label: 'PT-BR' },
   { code: 'es', label: 'ES' },
   { code: 'en', label: 'EN' },
 ]
-
-function resolveTranslationText(languageCode, translationPath, replacementByKey = {}) {
-  const fallbackTranslationCatalog = globalTranslationsByLanguageCode[globalDefaultLanguageCode] || {}
-  const selectedTranslationCatalog = globalTranslationsByLanguageCode[languageCode] || fallbackTranslationCatalog
-
-  const resolvedTemplate = translationPath
-    .split('.')
-    .reduce((currentNode, segment) => {
-      if (currentNode && typeof currentNode === 'object' && segment in currentNode) {
-        return currentNode[segment]
-      }
-      return null
-    }, selectedTranslationCatalog)
-
-  const fallbackTemplate = translationPath
-    .split('.')
-    .reduce((currentNode, segment) => {
-      if (currentNode && typeof currentNode === 'object' && segment in currentNode) {
-        return currentNode[segment]
-      }
-      return null
-    }, fallbackTranslationCatalog)
-
-  const rawTemplate = typeof resolvedTemplate === 'string'
-    ? resolvedTemplate
-    : typeof fallbackTemplate === 'string'
-      ? fallbackTemplate
-      : translationPath
-
-  return Object.entries(replacementByKey).reduce((translatedText, [replacementKey, replacementValue]) => {
-    return translatedText.replaceAll(`{${replacementKey}}`, String(replacementValue))
-  }, rawTemplate)
-}
 
 function resolveInitialLanguageCode() {
   const persistedLanguageCode = resolvePersistedLanguageCode()
@@ -395,7 +362,7 @@ function App() {
   }, [syncManagedArticleCatalog])
 
   function t(translationPath, replacementByKey) {
-    return resolveTranslationText(currentLanguageCode, translationPath, replacementByKey)
+    return resolveTranslationText(globalTranslationsByLanguageCode, currentLanguageCode, translationPath, replacementByKey)
   }
 
   useEffect(() => {
