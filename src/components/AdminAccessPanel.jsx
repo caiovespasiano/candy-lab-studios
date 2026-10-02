@@ -1511,11 +1511,9 @@ export function AdminAccessPanel({ articlePublicationController, onArticleCatalo
       <header className="sticky top-0 z-30 border-b-4 border-inkBlack bg-paperWhite">
         <div className="mx-auto flex w-full max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6">
           <div className="flex items-center gap-3">
-            <span className="cute-control-button h-9 w-9 shrink-0">
-              <FaLock className="h-4 w-4 text-inkBlack" aria-hidden="true" />
-            </span>
+            <FaLock className="h-5 w-5 shrink-0 text-inkBlack" aria-hidden="true" />
             <div className="leading-tight">
-              <h1 className="text-base font-black text-inkBlack">Painel de Administração</h1>
+              <h1 className="font-display text-base uppercase tracking-wide text-inkBlack">Painel de Administração</h1>
               <p className="mt-0.5 text-xs font-bold text-inkBlack/60">
                 {adminSessionState.username} · expira {adminSessionExpiresAtLabel}
               </p>
@@ -1559,10 +1557,10 @@ export function AdminAccessPanel({ articlePublicationController, onArticleCatalo
                 <li key={sectionLink.targetId}>
                   <button
                     type="button"
-                    className={`flex w-full items-center gap-2 rounded-lg border-2 border-inkBlack px-3 py-2 text-left shadow-[4px_4px_0px_0px_#111111] ${
+                    className={`flex w-full items-center gap-2 rounded-lg border-2 border-inkBlack px-3 py-2 text-left transition-colors hover:bg-pastelBlue hover:text-inkBlack ${
                       isCurrentSection
-                        ? 'bg-inkBlack font-black text-paperWhite'
-                        : 'bg-paperWhite text-sm font-bold text-inkBlack/70 transition-colors hover:bg-pastelBlue hover:text-inkBlack'
+                        ? 'bg-inkBlack font-black text-paperWhite shadow-[4px_4px_0px_0px_#111111]'
+                        : 'bg-paperWhite text-sm font-bold text-inkBlack/70 shadow-[4px_4px_0px_0px_#111111]'
                     }`}
                     onClick={() => handleAdminSectionNavigation(sectionLink.targetId)}
                     aria-current={isCurrentSection ? 'true' : undefined}
