@@ -1423,16 +1423,17 @@ export function AdminAccessPanel({ articlePublicationController, onArticleCatalo
 
   if (!adminSessionState.isAuthenticated) {
     return (
-      <main className="flex min-h-screen w-full items-center justify-center bg-paperWhite px-4 py-12">
+      <main className="flex min-h-screen w-full items-center justify-center bg-inkBlack/[0.04] px-4 py-12">
         <section
           className="cute-box no-lift w-full max-w-md p-6 sm:p-8"
           aria-labelledby="adminAccessHeading"
         >
-          <div className="mb-6 flex flex-col items-center text-center">
-            <span className="mb-4 flex h-14 w-14 items-center justify-center rounded-xl border border-inkBlack/25">
-              <FaLock className="h-6 w-6 text-inkBlack" aria-hidden="true" />
-            </span>
-            <h1 id="adminAccessHeading" className="text-2xl font-black text-inkBlack">
+          <div className="mb-6 flex flex-col items-center gap-3 text-center">
+            <FaLock className="h-7 w-7 text-inkBlack" aria-hidden="true" />
+            <h1
+              id="adminAccessHeading"
+              className="font-display text-2xl uppercase tracking-wide text-inkBlack"
+            >
               Área restrita
             </h1>
             <p className="mt-1 text-sm font-bold text-inkBlack/70">
@@ -1558,10 +1559,10 @@ export function AdminAccessPanel({ articlePublicationController, onArticleCatalo
                 <li key={sectionLink.targetId}>
                   <button
                     type="button"
-                    className={`flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-left ${
+                    className={`flex w-full items-center gap-2 rounded-lg border border-inkBlack px-3 py-2 text-sm text-left ${
                       isCurrentSection
                         ? 'bg-inkBlack font-black text-paperWhite'
-                        : 'font-bold text-inkBlack/70 transition-colors hover:bg-inkBlack/5 hover:text-inkBlack'
+                        : 'bg-paperWhite font-bold text-inkBlack/70 transition-colors hover:bg-inkBlack/5 hover:text-inkBlack'
                     }`}
                     onClick={() => handleAdminSectionNavigation(sectionLink.targetId)}
                     aria-current={isCurrentSection ? 'true' : undefined}
