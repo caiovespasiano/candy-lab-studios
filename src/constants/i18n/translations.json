@@ -53,6 +53,28 @@
       "likes": "Curtidas: {count}",
       "zoomImage": "Ampliar imagem"
     },
+    "product": {
+      "eyebrow": "Asset 3D para Roblox",
+      "priceLabel": "Preço",
+      "buyNow": "Comprar agora",
+      "unavailable": "Indisponível no momento",
+      "unavailableHint": "Este asset ainda não está publicado na loja.",
+      "share": "Compartilhar",
+      "descriptionHeading": "Descrição completa",
+      "detailsHeading": "Detalhes técnicos",
+      "tagsHeading": "Tags",
+      "softwareLabel": "Modelado em",
+      "formatsLabel": "Formatos",
+      "licenseLabel": "Licença",
+      "noTags": "Sem tags cadastradas.",
+      "noFormats": "Não informado.",
+      "noSoftware": "Não informado.",
+      "copyrightDefault": "© {year} Candy Lab Studios. Todos os direitos reservados. Proibida a revenda ou redistribuição do asset sem autorização.",
+      "aiDisclaimerHeading": "Sobre a produção",
+      "aiDisclaimerFalse": "Modelado, texturizado e finalizado manualmente. Não foi gerado com inteligência artificial.",
+      "aiDisclaimerTrue": "Este asset utiliza assistance de inteligência artificial na produção. Info disclosure: ver README do projeto.",
+      "viewOnStore": "Ver na loja"
+    },
     "language": {
       "switcherLabel": "Selecionar idioma"
     }
@@ -111,6 +133,28 @@
       "likes": "Likes: {count}",
       "zoomImage": "Zoom image"
     },
+    "product": {
+      "eyebrow": "3D asset for Roblox",
+      "priceLabel": "Price",
+      "buyNow": "Buy now",
+      "unavailable": "Currently unavailable",
+      "unavailableHint": "This asset is not published on the store yet.",
+      "share": "Share",
+      "descriptionHeading": "Full description",
+      "detailsHeading": "Technical details",
+      "tagsHeading": "Tags",
+      "softwareLabel": "Authored in",
+      "formatsLabel": "Formats",
+      "licenseLabel": "License",
+      "noTags": "No tags yet.",
+      "noFormats": "Not provided.",
+      "noSoftware": "Not provided.",
+      "copyrightDefault": "© {year} Candy Lab Studios. All rights reserved. Resale or redistribution of the asset without permission is prohibited.",
+      "aiDisclaimerHeading": "About production",
+      "aiDisclaimerFalse": "Modelled, textured and finalized by hand. Not generated with artificial intelligence.",
+      "aiDisclaimerTrue": "This asset uses artificial intelligence assistance in production.",
+      "viewOnStore": "View on store"
+    },
     "language": {
       "switcherLabel": "Select language"
     }
@@ -168,6 +212,28 @@
       "removeLike": "Quitar me gusta",
       "likes": "Me gusta: {count}",
       "zoomImage": "Ampliar imagen"
+    },
+    "product": {
+      "eyebrow": "Asset 3D para Roblox",
+      "priceLabel": "Precio",
+      "buyNow": "Comprar ahora",
+      "unavailable": "No disponible por ahora",
+      "unavailableHint": "Este asset todavía no está publicado en la tienda.",
+      "share": "Compartir",
+      "descriptionHeading": "Descripción completa",
+      "detailsHeading": "Detalles técnicos",
+      "tagsHeading": "Etiquetas",
+      "softwareLabel": "Modelado en",
+      "formatsLabel": "Formatos",
+      "licenseLabel": "Licencia",
+      "noTags": "Sin etiquetas todavía.",
+      "noFormats": "No informado.",
+      "noSoftware": "No informado.",
+      "copyrightDefault": "© {year} Candy Lab Studios. Todos los derechos reservados. Prohibida la reventa o redistribución del asset sin autorización.",
+      "aiDisclaimerHeading": "Sobre la producción",
+      "aiDisclaimerFalse": "Modelado, texturizado y finalizado a mano. No fue generado con inteligencia artificial.",
+      "aiDisclaimerTrue": "Este asset utiliza asistencia de inteligencia artificial en la producción.",
+      "viewOnStore": "Ver en la tienda"
     },
     "language": {
       "switcherLabel": "Seleccionar idioma"

@@ -80,10 +80,65 @@ function normalizeArticleRobuxPrice(rawRobuxPrice) {
   return Number.isInteger(normalizedRobuxPrice) && normalizedRobuxPrice >= 0 ? normalizedRobuxPrice : 0
 }
 
+function normalizeArticleTagCatalog(rawTagCatalog) {
+  if (!Array.isArray(rawTagCatalog)) {
+    return []
+  }
+
+  const seenNormalizedTagSet = new Set()
+
+  return rawTagCatalog.reduce((normalizedTagCatalog, rawTagValue) => {
+    const safeTagValue = sanitizeTextContent(String(rawTagValue || '')).trim()
+
+    if (!safeTagValue) {
+      return normalizedTagCatalog
+    }
+
+    const tagLookupKey = safeTagValue.toLowerCase()
+
+    if (seenNormalizedTagSet.has(tagLookupKey)) {
+      return normalizedTagCatalog
+    }
+
+    seenNormalizedTagSet.add(tagLookupKey)
+    normalizedTagCatalog.push(safeTagValue)
+
+    return normalizedTagCatalog
+  }, []).slice(0, 12)
+}
+
+function normalizeArticleFileFormatCatalog(rawFileFormatCatalog) {
+  if (!Array.isArray(rawFileFormatCatalog)) {
+    return []
+  }
+
+  return rawFileFormatCatalog
+    .map((rawFileFormatValue) => sanitizeTextContent(String(rawFileFormatValue || '')).trim())
+    .filter((safeFileFormatValue) => safeFileFormatValue.length > 0)
+    .slice(0, 8)
+}
+
+function normalizeArticleAuthoringSoftware(rawAuthoringSoftware) {
+  const safeAuthoringSoftware = sanitizeTextContent(String(rawAuthoringSoftware?.name || ''))
+
+  if (!safeAuthoringSoftware) {
+    return { name: '', iconKey: '' }
+  }
+
+  const safeIconKey = sanitizeTextContent(String(rawAuthoringSoftware.iconKey || '')).toLowerCase()
+
+  return { name: safeAuthoringSoftware, iconKey: safeIconKey }
+}
+
+function normalizeArticleCopyrightNotice(rawCopyrightNotice) {
+  return sanitizeTextContent(String(rawCopyrightNotice || ''))
+}
+
 export function createArticleEntity(rawArticleInput, indexPosition, nowTimestampProvider = Date.now) {
   const safeImageUrl = sanitizeArticleUrlValue(rawArticleInput.imageUrl) || globalFallbackImageUrl
   const safeTitle = sanitizeTextContent(rawArticleInput.title)
   const safeSubtitle = sanitizeTextContent(rawArticleInput.subtitle)
+  const safeSummary = sanitizeTextContent(rawArticleInput.summary) || safeSubtitle
   const safeDescription = sanitizeTextContent(rawArticleInput.description)
   const safeAlternativeText = sanitizeTextContent(rawArticleInput.imageAlternativeText) || safeTitle
   const safeIdentifier =
@@ -93,10 +148,17 @@ export function createArticleEntity(rawArticleInput, indexPosition, nowTimestamp
     id: safeIdentifier,
     title: safeTitle,
     subtitle: safeSubtitle,
+    summary: safeSummary,
     description: safeDescription,
     imageUrl: safeImageUrl,
     imageAlternativeText: safeAlternativeText,
     galleryImageUrls: normalizeGalleryImageUrlCatalog(rawArticleInput.galleryImageUrls, safeImageUrl),
+    tags: normalizeArticleTagCatalog(rawArticleInput.tags),
+    authoringSoftware: normalizeArticleAuthoringSoftware(rawArticleInput.authoringSoftware),
+    fileFormats: normalizeArticleFileFormatCatalog(rawArticleInput.fileFormats),
+    purchaseUrl: sanitizeArticleUrlValue(rawArticleInput.purchaseUrl),
+    copyrightNotice: normalizeArticleCopyrightNotice(rawArticleInput.copyrightNotice),
+    isGeneratedWithArtificialIntelligence: Boolean(rawArticleInput.isGeneratedWithArtificialIntelligence ?? false),
     likeCount: normalizeArticleLikeCount(rawArticleInput.likeCount),
     robuxPrice: normalizeArticleRobuxPrice(rawArticleInput.robuxPrice),
     isPublished: Boolean(rawArticleInput.isPublished ?? true),

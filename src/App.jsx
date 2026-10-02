@@ -1,13 +1,9 @@
 ﻿import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import {
-  FaArrowLeft,
-  FaArrowRight,
   FaDiscord,
   FaHeart,
   FaInstagram,
-  FaRegHeart,
   FaShareAlt,
-  FaTimes,
 } from 'react-icons/fa'
 import { AnimatePresence, motion as _motion } from 'framer-motion'
 import { SiRoblox } from 'react-icons/si'
@@ -15,6 +11,7 @@ import flagBrPng from './assets/flags/br.png'
 import flagEnPng from './assets/flags/en.png'
 import flagEsPng from './assets/flags/es.png'
 import { ProjectThumbnailImage } from './components/ProjectThumbnailImage'
+import { ProductDetailsPanel } from './components/ProductDetailsPanel'
 import { globalAdminAccessConfig } from './constants/globalAdminAccessConfig'
 import { globalArticlePublicationController } from './controllers/articles/globalArticlePublicationController'
 import {
@@ -37,21 +34,6 @@ import globalTranslationsByLanguageCode from './constants/i18n/translations.json
 const LazyAdminAccessPanel = lazy(() => import('./components/AdminAccessPanel').then((adminAccessPanelModule) => ({
   default: adminAccessPanelModule.AdminAccessPanel,
 })))
-
-const LazyProjectGalleryLightbox = lazy(() => import('./components/ProjectGalleryLightbox').then((lightboxModule) => ({
-  default: lightboxModule.ProjectGalleryLightbox,
-})))
-
-function ProjectGalleryLightboxLoadingFallback({ activeGalleryImageUrl, imageAlternativeText }) {
-  return (
-    <img
-      src={activeGalleryImageUrl}
-      alt={imageAlternativeText}
-      className="h-full w-full object-cover"
-      aria-hidden="true"
-    />
-  )
-}
 
 function AdminAccessPanelLoadingFallback() {
   return (
@@ -906,26 +888,6 @@ function App() {
     }
   }
 
-  function resolvePortfolioGridPlacementClass(articleIndex, totalArticles) {
-    const remainingItemsInLgRow = totalArticles % 3
-    const startIndexOfLastLgRow = totalArticles - remainingItemsInLgRow
-    const isLastLgRow = remainingItemsInLgRow > 0 && articleIndex >= startIndexOfLastLgRow
-
-    if (!isLastLgRow) {
-      return ''
-    }
-
-    if (remainingItemsInLgRow === 1 && articleIndex === totalArticles - 1) {
-      return 'sm:col-span-2 sm:w-full sm:max-w-[28rem] sm:justify-self-center lg:col-span-1 lg:max-w-none lg:col-start-2'
-    }
-
-    if (remainingItemsInLgRow === 2 && articleIndex === totalArticles - 1) {
-      return 'lg:col-start-3'
-    }
-
-    return ''
-  }
-
   const featuredProjectData = publishedArticleCatalog[0]
 
   if (isAdminRouteActive) {
@@ -1091,10 +1053,7 @@ function App() {
             {publishedArticleCatalog.map((projectData, projectIndex) => (
               <article
                 key={projectData.id}
-                className={`group flex flex-col items-center ${resolvePortfolioGridPlacementClass(
-                  projectIndex,
-                  publishedArticleCatalog.length
-                )}`}
+                className="group flex flex-col items-center"
               >
                 <button
                   type="button"
@@ -1252,128 +1211,29 @@ function App() {
             exit={{ opacity: 0 }}
             transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
           >
-            <_motion.article
-              className="cute-box no-lift relative flex max-h-[86dvh] w-full max-w-[calc(100vw-0.75rem)] flex-col overflow-auto overscroll-contain bg-pastelMint p-4 border-[6px] border-white sm:max-h-[92vh] sm:max-w-6xl sm:p-6"
-              onClick={(event) => event.stopPropagation()}
-              initial={{ opacity: 0, scale: 0.82, x: modalOpenAnimationOffset.x, y: modalOpenAnimationOffset.y }}
-              animate={{ opacity: 1, scale: 1, x: 0, y: 0 }}
+            <_motion.div
+              className="flex w-full items-center justify-center"
+              initial={{ opacity: 0, scale: 0.9, y: modalOpenAnimationOffset.y }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.97, y: 10 }}
-              transition={{ duration: 0.34, ease: [0.22, 1, 0.36, 1] }}
+              transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
             >
-            <button
-              type="button"
-              className="cute-control-button cute-control-button-close absolute right-3 top-3 z-10 flex h-9 w-9 items-center justify-center text-base font-black sm:right-4 sm:top-4 sm:h-10 sm:w-10 sm:text-xl"
-              onClick={handleCloseProjectModal}
-              aria-label={t('modal.close')}
-            >
-              <FaTimes aria-hidden="true" />
-            </button>
-
-            <div className="relative flex w-full flex-col items-center justify-center gap-4 bg-white cute-box no-lift p-3 sm:p-6">
-              <div className="relative aspect-4/3 w-full max-w-86 overflow-hidden bg-pastelBlue cute-box no-lift p-0! sm:max-w-200">
-                <Suspense
-                  fallback={(
-                    <ProjectGalleryLightboxLoadingFallback
-                      activeGalleryImageUrl={selectedProjectData.galleryImageUrls[currentGalleryImageIndex]}
-                      imageAlternativeText={selectedProjectData.imageAlternativeText}
-                    />
-                  )}
-                >
-                  <LazyProjectGalleryLightbox
-                    galleryImageUrls={selectedProjectData.galleryImageUrls}
-                    activeGalleryImageIndex={currentGalleryImageIndex}
-                    imageAlternativeText={selectedProjectData.imageAlternativeText}
-                    zoomImageLabel={t('modal.zoomImage')}
-                    resolveDimensionsByUrl={resolvePhotoSwipeDimensionsByUrl}
-                    onBeforeOpen={handlePhotoSwipeBeforeOpen}
-                  />
-                </Suspense>
-                  {selectedProjectGalleryImageCount > 1 && (
-                    <>
-                      <button
-                        type="button"
-                        onClick={handleNavigateGalleryLeft}
-                        className="cute-control-button absolute left-2 top-1/2 z-10 flex h-10 w-10 -translate-y-1/2 items-center justify-center border-2 border-white bg-pastelYellow hover:bg-[#f5d060] sm:h-12 sm:w-12"
-                        aria-label={t('modal.previousImage')}
-                      >
-                        <FaArrowLeft aria-hidden="true" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={handleNavigateGalleryRight}
-                        className="cute-control-button absolute right-2 top-1/2 z-10 flex h-10 w-10 -translate-y-1/2 items-center justify-center border-2 border-white bg-pastelYellow hover:bg-[#f5d060] sm:h-12 sm:w-12"
-                        aria-label={t('modal.nextImage')}
-                      >
-                        <FaArrowRight aria-hidden="true" />
-                      </button>
-                    </>
-                  )}
-              </div>
-              <div className="flex gap-2 justify-center mt-2">
-                 {selectedProjectData.galleryImageUrls.map((url, index) => (
-                    <button
-                     type="button"
-                      key={url}
-                      onClick={() => setCurrentGalleryImageIndex(index)}
-                     className={`carousel-dot ${index === currentGalleryImageIndex ? 'bg-pastelPink scale-125' : 'bg-white'}`}
-                       aria-label={t('modal.goToImage', { index: index + 1 })}
-                    />
-                 ))}
-              </div>
-            </div>
-
-            <div className="mt-5 sm:mt-8 flex w-full flex-col justify-center space-y-4 sm:space-y-6">
-              <div className="flex items-center justify-between gap-4">
-                <div>
-                  <h2 className="text-3xl sm:text-5xl font-display text-inkBlack drop-shadow-[2px_2px_0px_#ffffff] mb-2">
-                    {selectedProjectData.title}
-                  </h2>
-                  <span className="cute-box mt-2 inline-block bg-paperWhite px-3 py-1 text-xs font-black uppercase shadow-none border-2 border-inkBlack">
-                    {selectedProjectData.subtitle}
-                  </span>
-                </div>
-                <div className="flex items-center gap-2 px-1 py-1">
-                  <img
-                    src="/svg/robux_logo_black.svg"
-                    alt="Robux"
-                    className="h-9 w-9 shrink-0 object-contain sm:h-10 sm:w-10"
-                    loading="lazy"
-                  />
-                  <span className="text-2xl font-black leading-none text-inkBlack sm:text-3xl">
-                    {Number(selectedProjectData.robuxPrice ?? 0)}
-                  </span>
-                </div>
-              </div>
-              <p className="text-base font-bold leading-relaxed text-inkBlack/80 bg-pastelYellow p-4 sm:p-6 cute-box shadow-none border-4 border-white">
-                {selectedProjectData.description}
-              </p>
-              <div className="flex flex-row items-center gap-4 sm:gap-5 mt-4 sm:mt-6">
-                <button
-                  type="button"
-                  onClick={() => handleProjectLikeClick(selectedProjectData.id)}
-                  className={`cute-control-button flex h-10 w-10 items-center justify-center border-2 border-inkBlack text-xl sm:h-12 sm:w-12 sm:text-2xl ${
-                    hasSelectedProjectBeenLiked
-                      ? 'bg-pastelPink hover:bg-[#f09490]'
-                      : 'bg-paperWhite! hover:bg-pastelBlue!'
-                  }`}
-                  aria-label={hasSelectedProjectBeenLiked ? t('modal.removeLike') : t('modal.like')}
-                >
-                  {hasSelectedProjectBeenLiked ? <FaHeart className="text-red-600" aria-hidden="true" /> : <FaRegHeart className="text-inkBlack" aria-hidden="true" />}
-                </button>
-                <button
-                  type="button"
-                  onClick={handleShareProjectClick}
-                  className="cute-button cute-button-share flex h-10 flex-1 items-center justify-center gap-2 border-2 border-inkBlack text-inkBlack sm:h-12"
-                >
-                  <FaShareAlt aria-hidden="true" />
-                  <span>{t('modal.share')}</span>
-                </button>
-              </div>
-              <p className="text-xs font-black uppercase tracking-wider text-inkBlack/70">
-                {t('modal.likes', { count: projectLikeCountByIdentifier[selectedProjectData.id] })}
-              </p>
-            </div>
-            </_motion.article>
+            <ProductDetailsPanel
+              projectData={selectedProjectData}
+              currentGalleryImageIndex={currentGalleryImageIndex}
+              isLikedByCurrentVisitor={hasSelectedProjectBeenLiked}
+              likeCount={projectLikeCountByIdentifier[selectedProjectData.id]}
+              translate={t}
+              resolveDimensionsByUrl={resolvePhotoSwipeDimensionsByUrl}
+              onBeforeGalleryOpen={handlePhotoSwipeBeforeOpen}
+              onSelectGalleryImage={setCurrentGalleryImageIndex}
+              onNavigateGalleryPrevious={handleNavigateGalleryLeft}
+              onNavigateGalleryNext={handleNavigateGalleryRight}
+              onToggleLike={() => handleProjectLikeClick(selectedProjectData.id)}
+              onShare={handleShareProjectClick}
+              onClose={handleCloseProjectModal}
+            />
+            </_motion.div>
           </_motion.section>
         ) : null}
       </AnimatePresence>

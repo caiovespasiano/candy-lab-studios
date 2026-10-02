@@ -71,4 +71,74 @@ describe('globalArticleModel', () => {
 
     expect(articleEntity.robuxPrice).toBe(0)
   })
+
+  test('whenSummaryIsMissingThenCreateArticleEntityFallsBackToSubtitle', () => {
+    const articleEntity = createArticleEntity({
+      title: 'Artigo sem resumo',
+      subtitle: 'Subtitulo que vira resumo',
+      description: 'Descricao',
+      imageUrl: 'https://example.com/image.webp',
+    }, 0, () => 1_700_000_000_000)
+
+    expect(articleEntity.summary).toBe('Subtitulo que vira resumo')
+  })
+
+  test('whenTagCatalogHasDuplicatesAndBlanksThenCreateArticleEntityKeepsUniqueValues', () => {
+    const articleEntity = createArticleEntity({
+      title: 'Artigo com tags',
+      subtitle: 'Subtitulo',
+      description: 'Descricao',
+      imageUrl: 'https://example.com/image.webp',
+      tags: ['Mochila', '  ', 'mochila', 'Ugc', 'UGC'],
+    }, 0, () => 1_700_000_000_000)
+
+    expect(articleEntity.tags).toEqual(['Mochila', 'Ugc'])
+  })
+
+  test('whenAuthoringSoftwareIsProvidedThenCreateArticleEntityNormalizesIconKeyToLowerCase', () => {
+    const articleEntity = createArticleEntity({
+      title: 'Artigo com software',
+      subtitle: 'Subtitulo',
+      description: 'Descricao',
+      imageUrl: 'https://example.com/image.webp',
+      authoringSoftware: { name: '<b>Blender</b>', iconKey: 'BLENDER' },
+    }, 0, () => 1_700_000_000_000)
+
+    expect(articleEntity.authoringSoftware).toEqual({ name: 'Blender', iconKey: 'blender' })
+  })
+
+  test('whenFileFormatCatalogIsNotAnArrayThenCreateArticleEntityReturnsEmptyCatalog', () => {
+    const articleEntity = createArticleEntity({
+      title: 'Artigo sem formatos',
+      subtitle: 'Subtitulo',
+      description: 'Descricao',
+      imageUrl: 'https://example.com/image.webp',
+      fileFormats: 'FBX, OBJ',
+    }, 0, () => 1_700_000_000_000)
+
+    expect(articleEntity.fileFormats).toEqual([])
+  })
+
+  test('whenPurchaseUrlUsesUnsafeSchemeThenCreateArticleEntityEmptiesIt', () => {
+    const articleEntity = createArticleEntity({
+      title: 'Artigo com link inseguro',
+      subtitle: 'Subtitulo',
+      description: 'Descricao',
+      imageUrl: 'https://example.com/image.webp',
+      purchaseUrl: 'javascript:alert(1)',
+    }, 0, () => 1_700_000_000_000)
+
+    expect(articleEntity.purchaseUrl).toBe('')
+  })
+
+  test('whenAiFlagIsAbsentThenCreateArticleEntityDefaultsToNotGeneratedWithAi', () => {
+    const articleEntity = createArticleEntity({
+      title: 'Artigo sem flag de IA',
+      subtitle: 'Subtitulo',
+      description: 'Descricao',
+      imageUrl: 'https://example.com/image.webp',
+    }, 0, () => 1_700_000_000_000)
+
+    expect(articleEntity.isGeneratedWithArtificialIntelligence).toBe(false)
+  })
 })
