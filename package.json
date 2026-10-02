@@ -14,7 +14,6 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "country-flag-icons": "^1.6.16",
     "dotenv": "^17.4.2",
     "framer-motion": "^12.38.0",
     "photoswipe": "^5.4.4",
