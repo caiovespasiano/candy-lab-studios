@@ -14,6 +14,7 @@ import { SiRoblox } from 'react-icons/si'
 import flagBrPng from './assets/flags/br.png'
 import flagEnPng from './assets/flags/en.png'
 import flagEsPng from './assets/flags/es.png'
+import { ProjectThumbnailImage } from './components/ProjectThumbnailImage'
 import { globalAdminAccessConfig } from './constants/globalAdminAccessConfig'
 import { globalArticlePublicationController } from './controllers/articles/globalArticlePublicationController'
 import {
@@ -113,6 +114,7 @@ const globalFallbackPhotoSwipeImageDimensions = {
   height: 1200,
 }
 
+const globalAboveTheFoldProjectImageCount = 3
 const globalFloatingCandyEmojiCatalog = ['🍭', '🍬']
 const globalFloatingCandySizeScaleMultiplier = 1.15
 const globalFloatingCandyMaximumRotationInDegrees = 45
@@ -1072,9 +1074,10 @@ function App() {
                  aria-label={t('featured.openModal', { title: featuredProjectData.title })}
              >
                 <div className="relative w-full aspect-4/3 overflow-hidden rounded-lg sm:rounded-none">
-                  <img
-                    src={featuredProjectData.imageUrl}
-                    alt={featuredProjectData.imageAlternativeText}
+                  <ProjectThumbnailImage
+                    imageUrl={featuredProjectData.imageUrl}
+                    imageAlternativeText={featuredProjectData.imageAlternativeText}
+                    isAboveTheFold
                     className="h-full w-full object-cover transition-transform duration-400 ease-out hover:scale-105"
                   />
                 </div>
@@ -1133,11 +1136,11 @@ function App() {
                   aria-label={t('assets.openDetails', { title: projectData.title })}
                 >
                   <div className="cute-box relative w-full aspect-4/3 overflow-hidden bg-pastelPink shadow-none p-0!">
-                    <img
-                      src={projectData.imageUrl}
-                      alt={projectData.imageAlternativeText}
+                    <ProjectThumbnailImage
+                      imageUrl={projectData.imageUrl}
+                      imageAlternativeText={projectData.imageAlternativeText}
+                      isAboveTheFold={projectIndex < globalAboveTheFoldProjectImageCount}
                       className="h-full w-full object-cover filter saturate-150 transition-transform duration-500 group-hover:scale-110"
-                      loading="lazy"
                     />
                     <div className="cute-box absolute -right-2 top-4 flex h-14 w-14 items-center justify-center rounded-full bg-pastelYellow shadow-none text-sm font-black uppercase text-inkBlack -rotate-12 border-2 border-white p-0!">
                       <span className="flex items-center gap-1">
