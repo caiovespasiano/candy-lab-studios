@@ -106,7 +106,58 @@ legivel.
 
 ---
 
-## 6. Auditoria
+## 6. Descricao do artigo
+
+Bloco de texto corrido da pagina de produto, depois da dobra da imagem.
+
+```jsx
+<section aria-labelledby="productDescriptionHeading" className="flex flex-col gap-2">
+  <h3
+    id="productDescriptionHeading"
+    className="text-xs font-black uppercase tracking-widest text-inkBlack/60"
+  >
+    {translate('product.descriptionHeading')}
+  </h3>
+  <p className="whitespace-pre-line text-sm font-bold leading-relaxed text-inkBlack/85">
+    {projectData.description}
+  </p>
+</section>
+```
+
+Fica dentro do container que separa o topo do restante:
+
+```jsx
+<div className="mt-6 flex flex-col gap-5 border-t border-inkBlack/15 pt-6 sm:mt-8">
+```
+
+Titulo e valor traducidos nos tres idiomas:
+
+```json
+"descriptionHeading": "Descricao completa"
+```
+
+**Contrato do dado:** `description` e uma unica string, nao um array de paragrafos.
+Os paragrafos sao separados por linha em branco (`\n\n`) e o `whitespace-pre-line`
+faz a quebra. Isso mantem o campo sanitizavel como texto (`sanitizeTextContent` no
+modelo) e obrigatorio na validacao, que devolve `A descricao do artigo e
+obrigatoria.` quando vem vazio.
+
+**Por que funciona:** um unico `<p>` com quebras preservadas, em vez de varios
+`<p>`, deixa o campo como uma caixa de texto so no admin, sem precisar de controle
+de lista nem de mapear array na renderizacao. O `leading-relaxed` evita que o
+texto corrido brigue com o `leading-tight` do titulo logo acima. E o titulo
+reaproveita exatamente a mesma classe das outras secoes do modal, o que faz
+`Descricao completa`, `Detalhes tecnicos`, `Tags` e `Sobre a producao` lerem
+como um conjunto so.
+
+**Estilo do texto:** tres paragrafos curtos, um por ideia, com linha em branco
+entre eles. O primeiro diz o que e e por que foi feito, em material e cor. O
+segundo explica como a peca foi construida e o que faz ela funcionar de longe.
+O terceiro guarda um detalhe que se sustenta quando o asset e visto de perfil.
+Sem adjetivo de marketing e sem exclamacao: o texto narra a decisao de modelagem
+e deixa o leitor concluir o valor.
+
+## 7. Auditoria
 
 ```powershell
 npm run audit:layout
