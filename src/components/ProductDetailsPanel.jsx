@@ -116,7 +116,7 @@ function ProductGalleryColumn({
         <button
           type="button"
           onClick={onShare}
-          className="cute-control-button flex h-11 w-11 shrink-0 items-center justify-center"
+          className="cute-control-button cute-button-share flex h-11 w-11 shrink-0 items-center justify-center"
           aria-label={translate('product.share')}
           title={translate('product.share')}
         >
