@@ -1,4 +1,4 @@
-﻿import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+﻿import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import {
   FaArrowLeft,
   FaArrowRight,
@@ -16,7 +16,6 @@ import { SiRoblox } from 'react-icons/si'
 import flagBrPng from './assets/flags/br.png'
 import flagEnPng from './assets/flags/en.png'
 import flagEsPng from './assets/flags/es.png'
-import { AdminAccessPanel } from './components/AdminAccessPanel'
 import { globalAdminAccessConfig } from './constants/globalAdminAccessConfig'
 import { globalArticlePublicationController } from './controllers/articles/globalArticlePublicationController'
 import {
@@ -34,6 +33,23 @@ import { internalRuntimeStorage } from './services/internalRuntimeStorageService
 import { loadPersistedArticleCatalogFromProject, loadProjectPreferencesFromProject } from './services/projectPersistenceGatewayService'
 import { submitContactMessageUsingGateway } from './services/contactSubmissionService'
 import globalTranslationsByLanguageCode from './constants/i18n/translations.json'
+
+const LazyAdminAccessPanel = lazy(() => import('./components/AdminAccessPanel').then((adminAccessPanelModule) => ({
+  default: adminAccessPanelModule.AdminAccessPanel,
+})))
+
+function AdminAccessPanelLoadingFallback() {
+  return (
+    <div
+      className="flex min-h-[50vh] w-full items-center justify-center"
+      role="status"
+      aria-live="polite"
+      aria-label="Carregando painel administrativo"
+    >
+      <span className="text-sm font-black uppercase tracking-widest text-inkBlack/70">Carregando...</span>
+    </div>
+  )
+}
 
 const globalProjectContactGatewayClient = {
   async sendContactMessage(sanitizedContactPayload) {
@@ -932,13 +948,15 @@ function App() {
 
   if (isAdminRouteActive) {
     return (
-      <AdminAccessPanel
-        articlePublicationController={globalArticlePublicationController}
-        onArticleCatalogChange={syncManagedArticleCatalog}
-        onNavigateBackToLanding={() => {
-          window.location.hash = globalAdminAccessConfig.landingRouteHash
-        }}
-      />
+      <Suspense fallback={<AdminAccessPanelLoadingFallback />}>
+        <LazyAdminAccessPanel
+          articlePublicationController={globalArticlePublicationController}
+          onArticleCatalogChange={syncManagedArticleCatalog}
+          onNavigateBackToLanding={() => {
+            window.location.hash = globalAdminAccessConfig.landingRouteHash
+          }}
+        />
+      </Suspense>
     )
   }
 
