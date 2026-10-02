@@ -111,7 +111,7 @@ function ProductPriceBlock({ projectData, translate }) {
   const hasPurchaseUrl = Boolean(projectData.purchaseUrl)
 
   return (
-    <div className="rounded-xl border-2 border-inkBlack bg-paperWhite p-4">
+    <div className="flex flex-col gap-3 rounded-xl border-2 border-inkBlack bg-paperWhite p-4">
       <span className="text-xs font-black uppercase tracking-widest text-inkBlack/70">
         {translate('product.priceLabel')}
       </span>
@@ -141,7 +141,7 @@ function ProductPriceBlock({ projectData, translate }) {
       ) : (
         <>
           <span
-            className="h-12 w-full cursor-not-allowed rounded-lg border-2 border-inkBlack/25 bg-paperWhite font-black text-inkBlack/50"
+            className="flex h-12 w-full cursor-not-allowed items-center justify-center rounded-lg border-2 border-inkBlack/25 bg-paperWhite text-center text-sm font-black text-inkBlack/50"
             title={translate('product.unavailableHint')}
           >
             {translate('product.unavailable')}
@@ -167,7 +167,7 @@ function ProductTechnicalDetails({ projectData, translate }) {
   return (
     <div className="flex flex-col gap-4">
       <div className="grid gap-3 sm:grid-cols-3">
-        <div className="rounded-xl border border-inkBlack/15 bg-paperWhite p-3">
+        <div className="flex flex-col gap-1 rounded-xl border border-inkBlack/15 bg-paperWhite p-3">
           <span className="text-[10px] font-black uppercase tracking-widest text-inkBlack/60">
             {translate('product.softwareLabel')}
           </span>
@@ -177,7 +177,7 @@ function ProductTechnicalDetails({ projectData, translate }) {
           </span>
         </div>
 
-        <div className="rounded-xl border border-inkBlack/15 bg-paperWhite p-3">
+        <div className="flex flex-col gap-1 rounded-xl border border-inkBlack/15 bg-paperWhite p-3">
           <span className="text-[10px] font-black uppercase tracking-widest text-inkBlack/60">
             {translate('product.formatsLabel')}
           </span>
@@ -186,7 +186,7 @@ function ProductTechnicalDetails({ projectData, translate }) {
           </span>
         </div>
 
-        <div className="rounded-xl border border-inkBlack/15 bg-paperWhite p-3">
+        <div className="flex flex-col gap-1 rounded-xl border border-inkBlack/15 bg-paperWhite p-3">
           <span className="text-[10px] font-black uppercase tracking-widest text-inkBlack/60">
             {translate('product.licenseLabel')}
           </span>
@@ -194,7 +194,7 @@ function ProductTechnicalDetails({ projectData, translate }) {
         </div>
       </div>
 
-      <div className="rounded-xl border border-inkBlack/15 bg-paperWhite p-4">
+      <div className="flex flex-col gap-2 rounded-xl border border-inkBlack/15 bg-paperWhite p-4">
         <span className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-inkBlack/70">
           <FaTag aria-hidden="true" />
           {translate('product.tagsHeading')}
@@ -215,7 +215,7 @@ function ProductTechnicalDetails({ projectData, translate }) {
         )}
       </div>
 
-      <div className="rounded-xl border border-inkBlack/15 bg-paperWhite p-4">
+      <div className="flex flex-col gap-2 rounded-xl border border-inkBlack/15 bg-paperWhite p-4">
         <span className="text-xs font-black uppercase tracking-widest text-inkBlack/70">
           {translate('product.aiDisclaimerHeading')}
         </span>
