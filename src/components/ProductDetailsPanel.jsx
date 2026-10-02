@@ -37,12 +37,16 @@ function ProductGalleryColumn({
   projectData,
   currentGalleryImageIndex,
   galleryImageCount,
+  isLikedByCurrentVisitor,
+  likeCount,
   translate,
   resolveDimensionsByUrl,
   onBeforeOpen,
   onSelectImage,
   onNavigatePrevious,
   onNavigateNext,
+  onToggleLike,
+  onShare,
 }) {
   const activeGalleryImageUrl = projectData.galleryImageUrls[currentGalleryImageIndex] || projectData.imageUrl
 
@@ -103,6 +107,40 @@ function ProductGalleryColumn({
           ))}
         </div>
       )}
+
+      <span className="mt-1 text-[10px] font-black uppercase tracking-widest text-inkBlack/60">
+        {translate('product.eyebrow')}
+      </span>
+
+      <div className="flex items-center gap-3">
+        <button
+          type="button"
+          onClick={onShare}
+          className="cute-control-button flex h-11 w-11 shrink-0 items-center justify-center"
+          aria-label={translate('product.share')}
+          title={translate('product.share')}
+        >
+          <FaShareAlt aria-hidden="true" />
+        </button>
+
+        <button
+          type="button"
+          onClick={onToggleLike}
+          className={`cute-control-button flex h-11 w-11 shrink-0 items-center justify-center text-xl ${
+            isLikedByCurrentVisitor ? 'bg-pastelPink' : 'bg-paperWhite'
+          }`}
+          aria-label={isLikedByCurrentVisitor ? translate('modal.removeLike') : translate('modal.like')}
+          aria-pressed={isLikedByCurrentVisitor}
+        >
+          {isLikedByCurrentVisitor
+            ? <FaHeart className="text-red-600" aria-hidden="true" />
+            : <FaRegHeart className="text-inkBlack" aria-hidden="true" />}
+        </button>
+
+        <span className="text-xs font-black uppercase tracking-wider text-inkBlack/70">
+          {translate('modal.likes', { count: likeCount })}
+        </span>
+      </div>
     </div>
   )
 }
@@ -266,19 +304,19 @@ export function ProductDetailsPanel({
           projectData={projectData}
           currentGalleryImageIndex={currentGalleryImageIndex}
           galleryImageCount={projectData.galleryImageUrls.length}
+          isLikedByCurrentVisitor={isLikedByCurrentVisitor}
+          likeCount={likeCount}
           translate={translate}
           resolveDimensionsByUrl={resolveDimensionsByUrl}
           onBeforeOpen={onBeforeGalleryOpen}
           onSelectImage={onSelectGalleryImage}
           onNavigatePrevious={onNavigateGalleryPrevious}
           onNavigateNext={onNavigateGalleryNext}
+          onToggleLike={onToggleLike}
+          onShare={onShare}
         />
 
         <div className="flex w-full flex-col gap-4 lg:w-[54%]">
-          <span className="text-[10px] font-black uppercase tracking-widest text-inkBlack/60">
-            {translate('product.eyebrow')}
-          </span>
-
           <h2 className="font-display text-3xl leading-tight text-inkBlack drop-shadow-[2px_2px_0px_#ffffff] sm:text-4xl">
             {projectData.title}
           </h2>
@@ -292,35 +330,6 @@ export function ProductDetailsPanel({
           </p>
 
           <ProductPriceBlock projectData={projectData} translate={translate} />
-
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={onToggleLike}
-              className={`cute-control-button flex h-11 w-11 shrink-0 items-center justify-center text-xl ${
-                isLikedByCurrentVisitor ? 'bg-pastelPink' : 'bg-paperWhite'
-              }`}
-              aria-label={isLikedByCurrentVisitor ? translate('modal.removeLike') : translate('modal.like')}
-              aria-pressed={isLikedByCurrentVisitor}
-            >
-              {isLikedByCurrentVisitor
-                ? <FaHeart className="text-red-600" aria-hidden="true" />
-                : <FaRegHeart className="text-inkBlack" aria-hidden="true" />}
-            </button>
-
-            <span className="shrink-0 text-xs font-black uppercase tracking-wider text-inkBlack/70">
-              {translate('modal.likes', { count: likeCount })}
-            </span>
-
-            <button
-              type="button"
-              onClick={onShare}
-              className="cute-button cute-button-share ml-auto flex h-11 items-center justify-center gap-2 px-6 font-black text-inkBlack"
-            >
-              <FaShareAlt aria-hidden="true" />
-              <span>{translate('product.share')}</span>
-            </button>
-          </div>
         </div>
       </div>
 
