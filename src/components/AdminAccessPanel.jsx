@@ -1557,10 +1557,10 @@ export function AdminAccessPanel({ articlePublicationController, onArticleCatalo
                 <li key={sectionLink.targetId}>
                   <button
                     type="button"
-                    className={`flex w-full items-center gap-2 rounded-lg border-2 border-inkBlack px-3 py-2 text-left transition-colors hover:bg-pastelBlue hover:text-inkBlack ${
+                    className={`flex w-full items-center gap-2 rounded-lg border-2 border-inkBlack px-3 py-2 text-left text-sm shadow-[4px_4px_0px_0px_#111111] transition-[transform,background-color,color] duration-300 ease-out hover:scale-[1.015] hover:bg-pastelBlue hover:text-inkBlack active:scale-[0.992] ${
                       isCurrentSection
-                        ? 'bg-inkBlack font-black text-paperWhite shadow-[4px_4px_0px_0px_#111111]'
-                        : 'bg-paperWhite text-sm font-bold text-inkBlack/70 shadow-[4px_4px_0px_0px_#111111]'
+                        ? 'bg-inkBlack font-black text-paperWhite'
+                        : 'bg-paperWhite font-bold text-inkBlack/70'
                     }`}
                     onClick={() => handleAdminSectionNavigation(sectionLink.targetId)}
                     aria-current={isCurrentSection ? 'true' : undefined}
