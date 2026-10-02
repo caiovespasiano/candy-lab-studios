@@ -1069,7 +1069,7 @@ function App() {
                         isAboveTheFold={projectIndex < globalAboveTheFoldProjectImageCount}
                         className="h-full w-full object-cover filter saturate-150 transition-transform duration-500 group-hover:scale-110"
                       />
-                      <div className="absolute right-2 top-2 flex h-12 w-12 items-center justify-center rounded-full border-2 border-white bg-pastelYellow text-sm font-black text-inkBlack">
+                      <div className="absolute right-2 top-2 flex h-12 w-12 items-center justify-center rounded-full border-2 border-inkBlack bg-paperWhite text-sm font-black text-paperWhite">
                         <span className="flex items-center gap-1">
                           {projectLikeCountByIdentifier[projectData.id]}
                           <FaHeart aria-hidden="true" />
