@@ -48,7 +48,7 @@ function ProductGalleryColumn({
 
   return (
     <div className="flex w-full flex-col gap-3 lg:w-[46%]">
-      <div className="cute-box no-lift relative aspect-4/3 w-full overflow-hidden bg-pastelBlue">
+      <div className="relative aspect-4/3 w-full overflow-hidden rounded-xl border-2 border-inkBlack bg-paperWhite">
         <Suspense
           fallback={(
             <GalleryLightboxLoadingFallback
@@ -72,7 +72,7 @@ function ProductGalleryColumn({
             <button
               type="button"
               onClick={onNavigatePrevious}
-              className="cute-control-button absolute left-2 top-1/2 z-10 flex h-10 w-10 -translate-y-1/2 items-center justify-center bg-pastelYellow sm:h-12 sm:w-12"
+              className="cute-control-button absolute left-2 top-1/2 z-10 flex h-10 w-10 -translate-y-1/2 items-center justify-center sm:h-12 sm:w-12"
               aria-label={translate('modal.previousImage')}
             >
               <FaArrowLeft aria-hidden="true" />
@@ -80,7 +80,7 @@ function ProductGalleryColumn({
             <button
               type="button"
               onClick={onNavigateNext}
-              className="cute-control-button absolute right-2 top-1/2 z-10 flex h-10 w-10 -translate-y-1/2 items-center justify-center bg-pastelYellow sm:h-12 sm:w-12"
+              className="cute-control-button absolute right-2 top-1/2 z-10 flex h-10 w-10 -translate-y-1/2 items-center justify-center sm:h-12 sm:w-12"
               aria-label={translate('modal.nextImage')}
             >
               <FaArrowRight aria-hidden="true" />
@@ -111,7 +111,7 @@ function ProductPriceBlock({ projectData, translate }) {
   const hasPurchaseUrl = Boolean(projectData.purchaseUrl)
 
   return (
-    <div className="cute-box no-lift flex flex-col gap-3 bg-pastelYellow p-4">
+    <div className="rounded-xl border-2 border-inkBlack bg-paperWhite p-4">
       <span className="text-xs font-black uppercase tracking-widest text-inkBlack/70">
         {translate('product.priceLabel')}
       </span>
@@ -141,7 +141,7 @@ function ProductPriceBlock({ projectData, translate }) {
       ) : (
         <>
           <span
-            className="cute-button no-lift h-12 w-full cursor-not-allowed font-black text-inkBlack"
+            className="h-12 w-full cursor-not-allowed rounded-lg border-2 border-inkBlack/25 bg-paperWhite font-black text-inkBlack/50"
             title={translate('product.unavailableHint')}
           >
             {translate('product.unavailable')}
@@ -167,7 +167,7 @@ function ProductTechnicalDetails({ projectData, translate }) {
   return (
     <div className="flex flex-col gap-4">
       <div className="grid gap-3 sm:grid-cols-3">
-        <div className="cute-box no-lift flex flex-col gap-1 p-3">
+        <div className="rounded-xl border border-inkBlack/15 bg-paperWhite p-3">
           <span className="text-[10px] font-black uppercase tracking-widest text-inkBlack/60">
             {translate('product.softwareLabel')}
           </span>
@@ -177,7 +177,7 @@ function ProductTechnicalDetails({ projectData, translate }) {
           </span>
         </div>
 
-        <div className="cute-box no-lift flex flex-col gap-1 p-3">
+        <div className="rounded-xl border border-inkBlack/15 bg-paperWhite p-3">
           <span className="text-[10px] font-black uppercase tracking-widest text-inkBlack/60">
             {translate('product.formatsLabel')}
           </span>
@@ -186,7 +186,7 @@ function ProductTechnicalDetails({ projectData, translate }) {
           </span>
         </div>
 
-        <div className="cute-box no-lift flex flex-col gap-1 p-3">
+        <div className="rounded-xl border border-inkBlack/15 bg-paperWhite p-3">
           <span className="text-[10px] font-black uppercase tracking-widest text-inkBlack/60">
             {translate('product.licenseLabel')}
           </span>
@@ -194,7 +194,7 @@ function ProductTechnicalDetails({ projectData, translate }) {
         </div>
       </div>
 
-      <div className="cute-box no-lift flex flex-col gap-2 bg-pastelMint p-4">
+      <div className="rounded-xl border border-inkBlack/15 bg-paperWhite p-4">
         <span className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-inkBlack/70">
           <FaTag aria-hidden="true" />
           {translate('product.tagsHeading')}
@@ -204,7 +204,7 @@ function ProductTechnicalDetails({ projectData, translate }) {
             {projectData.tags.map((tagValue) => (
               <li
                 key={tagValue}
-                className="cute-control-button px-3 py-1 text-[11px] font-black uppercase tracking-wide text-inkBlack"
+                className="rounded-full border border-inkBlack/25 bg-paperWhite px-3 py-1 text-[11px] font-black uppercase tracking-wide text-inkBlack"
               >
                 {tagValue}
               </li>
@@ -215,7 +215,7 @@ function ProductTechnicalDetails({ projectData, translate }) {
         )}
       </div>
 
-      <div className="cute-box no-lift flex flex-col gap-2 p-4">
+      <div className="rounded-xl border border-inkBlack/15 bg-paperWhite p-4">
         <span className="text-xs font-black uppercase tracking-widest text-inkBlack/70">
           {translate('product.aiDisclaimerHeading')}
         </span>
@@ -322,7 +322,7 @@ export function ProductDetailsPanel({
         </div>
       </div>
 
-      <div className="mt-6 flex flex-col gap-5 border-t-4 border-inkBlack pt-6 sm:mt-8">
+      <div className="mt-6 flex flex-col gap-5 border-t border-inkBlack/15 pt-6 sm:mt-8">
         <section aria-labelledby="productDescriptionHeading" className="flex flex-col gap-2">
           <h3
             id="productDescriptionHeading"

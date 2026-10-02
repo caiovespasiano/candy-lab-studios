@@ -1,7 +1,7 @@
 import { memo, useCallback, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Reorder } from 'framer-motion'
-import { FaArrowLeft, FaEdit, FaGripVertical, FaImages, FaLock, FaPlus, FaSignOutAlt, FaTrash, FaUpload } from 'react-icons/fa'
+import { FaArrowLeft, FaEdit, FaGripVertical, FaImages, FaLock, FaPlus, FaSignOutAlt, FaTimes, FaTrash, FaUpload } from 'react-icons/fa'
 import { requestAdminAuthenticationUsingGateway } from '../services/adminAuthenticationService'
 import {
   clearPersistedAdminSessionToken,
@@ -480,7 +480,7 @@ function GalleryUrlEditor({
 
 function AdminFormSection({ title, description, children }) {
   return (
-    <fieldset className="cute-box no-lift grid min-w-0 gap-3 p-4">
+    <fieldset className="grid min-w-0 gap-3 rounded-xl border border-inkBlack/15 p-4">
       <legend className="px-2 text-xs font-black uppercase tracking-widest text-inkBlack">
         {title}
       </legend>
@@ -575,7 +575,7 @@ function ArticleFormFields({
             onChange={onInputChange}
           />
         </label>
-        <p className="cute-box no-lift bg-pastelBlue px-3 py-2 text-[11px] font-bold text-inkBlack">
+        <p className="rounded-lg border border-inkBlack/15 bg-paperWhite px-3 py-2 text-[11px] font-bold text-inkBlack">
           Sem link, o botão aparece como &quot;Indisponível&quot;. Ele nunca abre a loja errada.
         </p>
       </AdminFormSection>
@@ -679,7 +679,7 @@ function ArticleFormFields({
             {enteredTagCatalog.map((tagValue) => (
               <li
                 key={tagValue}
-                className="cute-control-button px-2.5 py-0.5 text-[11px] font-black text-inkBlack"
+                className="rounded-full border border-inkBlack/25 bg-paperWhite px-2.5 py-0.5 text-[11px] font-black text-inkBlack"
               >
                 {tagValue}
               </li>
@@ -690,7 +690,7 @@ function ArticleFormFields({
           {globalSuggestedTagCatalog.map((suggestedTag) => (
             <span
               key={suggestedTag}
-              className="cute-input inline-block w-auto px-2.5 py-0.5 text-[11px] font-bold text-inkBlack/60"
+              className="inline-block w-auto rounded-full border border-inkBlack/20 bg-paperWhite px-2.5 py-0.5 text-[11px] font-bold text-inkBlack/60"
             >
               {suggestedTag}
             </span>
@@ -698,7 +698,7 @@ function ArticleFormFields({
         </p>
       </AdminFormSection>
 
-      <label className="cute-box no-lift flex cursor-pointer items-start gap-3 bg-pastelYellow p-3">
+      <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-inkBlack/20 p-3">
         <input
           className="mt-0.5 h-4 w-4 shrink-0"
           name="isGeneratedWithArtificialIntelligence"
@@ -715,7 +715,7 @@ function ArticleFormFields({
       </label>
 
       <div className="flex min-w-0 gap-3 pt-1">
-        <button type="submit" className="cute-button flex flex-1 items-center justify-center gap-2 bg-pastelMint">
+        <button type="submit" className="cute-button flex flex-1 items-center justify-center gap-2">
           <FaPlus aria-hidden="true" />
           <span>{submitLabel}</span>
         </button>
@@ -740,7 +740,7 @@ const ArticleReorderItem = memo(function ArticleReorderItem({ articleData, onDra
       onDragStart={onDragStart}
       onDragEnd={onDragEnd}
       dragMomentum={false}
-      className="cute-box no-lift relative list-none p-4"
+      className="relative list-none rounded-xl border border-inkBlack/15 bg-paperWhite p-4 transition-colors hover:border-inkBlack/40"
     >
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex min-w-0 items-start gap-3">
@@ -755,7 +755,7 @@ const ArticleReorderItem = memo(function ArticleReorderItem({ articleData, onDra
           <div className="min-w-0">
             <div className="flex items-center gap-2">
               <h3 className="truncate text-base font-black text-inkBlack">{articleData.title}</h3>
-              <span className="cute-control-button shrink-0 px-3 py-0.5 text-[10px] uppercase tracking-wide">
+              <span className="shrink-0 rounded-full bg-inkBlack/10 px-2 py-0.5 text-[10px] font-black uppercase tracking-wide text-inkBlack/70">
                 {articleData.isPublished ? 'Publicado' : 'Rascunho'}
               </span>
             </div>
@@ -773,10 +773,10 @@ const ArticleReorderItem = memo(function ArticleReorderItem({ articleData, onDra
           </span>
         </div>
       </header>
-      <div className="mt-4 flex flex-wrap gap-2">
+      <div className="mt-3 flex flex-wrap gap-1.5">
         <button
           type="button"
-          className="cute-button h-8 gap-1.5 px-4 text-xs sm:px-4 sm:py-1 sm:text-xs"
+          className="flex h-8 items-center gap-1.5 rounded-lg border border-inkBlack/25 bg-paperWhite px-3 text-xs font-black text-inkBlack transition-colors hover:border-inkBlack hover:bg-inkBlack/5"
           onClick={() => onEdit(articleData)}
         >
           <FaEdit aria-hidden="true" />
@@ -784,14 +784,14 @@ const ArticleReorderItem = memo(function ArticleReorderItem({ articleData, onDra
         </button>
         <button
           type="button"
-          className="cute-button cute-button-share h-8 px-4 text-xs sm:px-4 sm:py-1 sm:text-xs"
+          className="h-8 rounded-lg border border-inkBlack/25 bg-paperWhite px-3 text-xs font-black text-inkBlack transition-colors hover:border-inkBlack hover:bg-inkBlack/5"
           onClick={() => onToggleVisibility(articleData.id)}
         >
           {articleData.isPublished ? 'Despublicar' : 'Publicar'}
         </button>
         <button
           type="button"
-          className="cute-control-button h-8 gap-1.5 px-4 text-xs"
+          className="flex h-8 items-center gap-1.5 rounded-lg border border-inkBlack/25 bg-paperWhite px-3 text-xs font-black text-inkBlack transition-colors hover:border-inkBlack hover:bg-inkBlack/5"
           onClick={() => onDelete(articleData.id)}
         >
           <FaTrash aria-hidden="true" />
@@ -1407,6 +1407,13 @@ export function AdminAccessPanel({ articlePublicationController, onArticleCatalo
     ? new Date(adminSessionState.sessionExpiresAtInSeconds * 1000).toLocaleString('pt-BR')
     : '-'
 
+  const [activeAdminSectionId, setActiveAdminSectionId] = useState('admin-overview')
+
+  function handleAdminSectionNavigation(targetSectionId) {
+    setActiveAdminSectionId(targetSectionId)
+    document.getElementById(targetSectionId)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+
   const publishedArticleCount = currentSortOrderRef.current.filter((article) => article.isPublished).length
   const draftArticleCount = currentSortOrderRef.current.length - publishedArticleCount
   const totalGalleryImageCount = currentSortOrderRef.current.reduce(
@@ -1416,13 +1423,13 @@ export function AdminAccessPanel({ articlePublicationController, onArticleCatalo
 
   if (!adminSessionState.isAuthenticated) {
     return (
-      <main className="flex min-h-screen w-full items-center justify-center bg-pastelBlue px-4 py-12">
+      <main className="flex min-h-screen w-full items-center justify-center bg-paperWhite px-4 py-12">
         <section
           className="cute-box no-lift w-full max-w-md p-6 sm:p-8"
           aria-labelledby="adminAccessHeading"
         >
           <div className="mb-6 flex flex-col items-center text-center">
-            <span className="cute-control-button mb-4 h-14 w-14">
+            <span className="mb-4 flex h-14 w-14 items-center justify-center rounded-xl border border-inkBlack/25">
               <FaLock className="h-6 w-6 text-inkBlack" aria-hidden="true" />
             </span>
             <h1 id="adminAccessHeading" className="text-2xl font-black text-inkBlack">
@@ -1480,7 +1487,7 @@ export function AdminAccessPanel({ articlePublicationController, onArticleCatalo
           </form>
 
           {adminFeedbackMessage ? (
-            <p className="cute-box no-lift mt-4 bg-pastelYellow px-4 py-3 text-sm font-black text-inkBlack" role="status">
+            <p className="mt-4 rounded-lg border border-inkBlack/20 px-4 py-3 text-sm font-black text-inkBlack" role="status">
               {adminFeedbackMessage}
             </p>
           ) : null}
@@ -1503,7 +1510,7 @@ export function AdminAccessPanel({ articlePublicationController, onArticleCatalo
       <header className="sticky top-0 z-30 border-b-4 border-inkBlack bg-paperWhite">
         <div className="mx-auto flex w-full max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6">
           <div className="flex items-center gap-3">
-            <span className="cute-control-button h-9 w-9">
+            <span className="cute-control-button h-9 w-9 shrink-0">
               <FaLock className="h-4 w-4 text-inkBlack" aria-hidden="true" />
             </span>
             <div>
@@ -1517,19 +1524,20 @@ export function AdminAccessPanel({ articlePublicationController, onArticleCatalo
           <div className="flex items-center gap-2">
             <button
               type="button"
-              className="cute-button h-9 gap-1.5 px-4 text-xs sm:px-4 sm:py-1 sm:text-xs"
+              className="cute-button h-10 gap-1.5 px-5 text-sm sm:px-5 sm:py-2 sm:text-sm"
               onClick={onNavigateBackToLanding}
             >
               <FaArrowLeft aria-hidden="true" />
-              <span className="hidden sm:inline">Ver site</span>
+              <span>Ver site</span>
             </button>
             <button
               type="button"
-              className="cute-control-button h-9 gap-1.5 px-4 text-xs"
+              className="cute-control-button h-10 w-10 shrink-0 px-0"
               onClick={handleAdminLogoutClick}
+              aria-label="Encerrar sessão"
+              title="Encerrar sessão"
             >
               <FaSignOutAlt aria-hidden="true" />
-              <span className="hidden sm:inline">Sair</span>
             </button>
           </div>
         </div>
@@ -1538,34 +1546,32 @@ export function AdminAccessPanel({ articlePublicationController, onArticleCatalo
       <div className="mx-auto flex w-full max-w-7xl gap-6 px-4 py-6 sm:px-6">
         <nav aria-label="Seções do painel" className="hidden w-52 shrink-0 lg:block">
           <ul className="sticky top-24 flex flex-col gap-1">
-            <li>
-              <a
-                href="#admin-overview"
-                className="cute-control-button gap-2 px-3 py-2 text-sm font-black text-inkBlack"
-                aria-current="page"
-              >
-                <FaGripVertical className="h-4 w-4" aria-hidden="true" />
-                <span>Visão geral</span>
-              </a>
-            </li>
-            <li>
-              <a
-                href="#admin-articles"
-                className="cute-control-button gap-2 px-3 py-2 text-sm font-bold text-inkBlack"
-              >
-                <FaEdit className="h-4 w-4" aria-hidden="true" />
-                <span>Artigos</span>
-              </a>
-            </li>
-            <li>
-              <a
-                href="#admin-appearance"
-                className="cute-control-button gap-2 px-3 py-2 text-sm font-bold text-inkBlack"
-              >
-                <FaImages className="h-4 w-4" aria-hidden="true" />
-                <span>Aparência</span>
-              </a>
-            </li>
+            {[
+              { label: 'Visão geral', targetId: 'admin-overview', IconComponent: FaGripVertical },
+              { label: 'Artigos', targetId: 'admin-articles', IconComponent: FaEdit },
+              { label: 'Aparência', targetId: 'admin-appearance', IconComponent: FaImages },
+            ].map((sectionLink) => {
+              const SectionLinkIcon = sectionLink.IconComponent
+              const isCurrentSection = activeAdminSectionId === sectionLink.targetId
+
+              return (
+                <li key={sectionLink.targetId}>
+                  <button
+                    type="button"
+                    className={`flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-left ${
+                      isCurrentSection
+                        ? 'bg-inkBlack font-black text-paperWhite'
+                        : 'font-bold text-inkBlack/70 transition-colors hover:bg-inkBlack/5 hover:text-inkBlack'
+                    }`}
+                    onClick={() => handleAdminSectionNavigation(sectionLink.targetId)}
+                    aria-current={isCurrentSection ? 'true' : undefined}
+                  >
+                    <SectionLinkIcon className="h-4 w-4 shrink-0" aria-hidden="true" />
+                    <span>{sectionLink.label}</span>
+                  </button>
+                </li>
+              )
+            })}
           </ul>
         </nav>
 
@@ -1656,8 +1662,8 @@ export function AdminAccessPanel({ articlePublicationController, onArticleCatalo
                           type="button"
                           onClick={() => handleBackgroundImagePreviewSelection(uploadedImageUrl)}
                           className={
-                            `cute-box w-full overflow-hidden p-0 `
-                            + `${isSelectedBackgroundImage ? '' : 'no-lift'}`
+                            `w-full overflow-hidden rounded-xl border-4 bg-paperWhite p-0 `
+                            + `${isSelectedBackgroundImage ? 'border-inkBlack' : 'border-inkBlack/20'}`
                           }
                           aria-label={`Selecionar ${uploadedImageUrl} como imagem de fundo`}
                           title={uploadedImageUrl}
@@ -1680,7 +1686,7 @@ export function AdminAccessPanel({ articlePublicationController, onArticleCatalo
               <button
                 type="button"
                 onClick={handleUseDefaultUploadedBackgroundImage}
-                className="cute-button bg-pastelMint px-4 py-2 text-xs"
+                className="cute-button px-4 py-2 text-xs"
               >
                 Usar Background
               </button>
@@ -1696,7 +1702,7 @@ export function AdminAccessPanel({ articlePublicationController, onArticleCatalo
 
           <section
             id="admin-articles"
-            className="cute-box scroll-mt-24 bg-paperWhite p-6 sm:p-8"
+            className="scroll-mt-24 rounded-xl border border-inkBlack/15 bg-paperWhite p-6 sm:p-8"
             aria-labelledby="adminArticlesHeading"
           >
             <div className="flex flex-wrap items-center justify-between gap-4">
@@ -1708,7 +1714,7 @@ export function AdminAccessPanel({ articlePublicationController, onArticleCatalo
               </div>
               <button
                 type="button"
-                className="cute-button flex h-10 items-center justify-center gap-2 bg-pastelMint px-4 text-sm"
+                className="cute-button flex h-10 items-center justify-center gap-2 px-4 text-sm"
                 onClick={handleOpenArticleCreationModal}
               >
                 <FaPlus aria-hidden="true" />
@@ -1718,7 +1724,7 @@ export function AdminAccessPanel({ articlePublicationController, onArticleCatalo
 
             {articleFeedbackMessage ? (
               <p
-                className="cute-box no-lift mt-4 bg-pastelYellow px-4 py-3 text-sm font-black text-inkBlack"
+                className="mt-4 rounded-lg border border-inkBlack/20 px-4 py-3 text-sm font-black text-inkBlack"
                 role="status"
               >
                 {articleFeedbackMessage}
@@ -1726,7 +1732,7 @@ export function AdminAccessPanel({ articlePublicationController, onArticleCatalo
             ) : null}
 
             {sortableArticleCatalog.length === 0 ? (
-              <p className="cute-box no-lift mt-6 px-4 py-10 text-center text-sm font-bold text-inkBlack/60">
+              <p className="mt-6 rounded-lg border border-dashed border-inkBlack/25 px-4 py-10 text-center text-sm font-bold text-inkBlack/60">
                 Nenhum artigo ainda. Use &quot;Novo artigo&quot; para criar o primeiro.
               </p>
             ) : (
@@ -1771,11 +1777,11 @@ export function AdminAccessPanel({ articlePublicationController, onArticleCatalo
           >
             <button
               type="button"
-              className="cute-control-button cute-control-button-close absolute right-4 top-4 z-10 flex h-10 w-10 items-center justify-center text-xl font-black"
+              className="cute-control-button cute-control-button-close absolute right-4 top-4 z-10 flex h-10 w-10 items-center justify-center text-xl"
               onClick={handleCloseArticleModal}
               aria-label="Fechar modal"
             >
-              ×
+              <FaTimes aria-hidden="true" />
             </button>
 
             <h2 className="mb-6 text-2xl font-display text-inkBlack">
@@ -1813,7 +1819,7 @@ export function AdminAccessPanel({ articlePublicationController, onArticleCatalo
             )}
 
             {articleFeedbackMessage ? (
-              <p className="cute-box mt-4 bg-paperWhite px-4 py-3 text-sm font-black text-inkBlack" role="status">
+              <p className="mt-4 rounded-lg border border-inkBlack/20 px-4 py-3 text-sm font-black text-inkBlack" role="status">
                 {articleFeedbackMessage}
               </p>
             ) : null}
