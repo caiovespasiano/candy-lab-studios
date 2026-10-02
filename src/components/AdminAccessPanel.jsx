@@ -1513,9 +1513,9 @@ export function AdminAccessPanel({ articlePublicationController, onArticleCatalo
             <span className="cute-control-button h-9 w-9 shrink-0">
               <FaLock className="h-4 w-4 text-inkBlack" aria-hidden="true" />
             </span>
-            <div>
-              <h1 className="text-base font-black leading-tight text-inkBlack">Painel de Administração</h1>
-              <p className="text-xs font-bold text-inkBlack/60">
+            <div className="leading-tight">
+              <h1 className="text-base font-black text-inkBlack">Painel de Administração</h1>
+              <p className="mt-0.5 text-xs font-bold text-inkBlack/60">
                 {adminSessionState.username} · expira {adminSessionExpiresAtLabel}
               </p>
             </div>
