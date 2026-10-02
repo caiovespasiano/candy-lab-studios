@@ -47,7 +47,7 @@ function ProductGalleryColumn({
   const activeGalleryImageUrl = projectData.galleryImageUrls[currentGalleryImageIndex] || projectData.imageUrl
 
   return (
-    <div className="flex w-full flex-col gap-3 lg:w-[46%]">
+    <div className="flex w-full flex-col gap-3 self-start lg:w-[46%]">
       <div className="relative aspect-4/3 w-full overflow-hidden rounded-xl border-2 border-inkBlack bg-paperWhite">
         <Suspense
           fallback={(
@@ -112,21 +112,23 @@ function ProductPriceBlock({ projectData, translate }) {
 
   return (
     <div className="flex flex-col gap-3 rounded-xl border-2 border-inkBlack bg-paperWhite p-4">
-      <span className="text-xs font-black uppercase tracking-widest text-inkBlack/70">
-        {translate('product.priceLabel')}
-      </span>
-
-      <div className="flex items-center gap-2">
-        <img
-          src="/svg/robux_logo_black.svg"
-          alt="Robux"
-          className="h-9 w-9 shrink-0 object-contain"
-          loading="lazy"
-          decoding="async"
-        />
-        <span className="text-3xl font-black leading-none text-inkBlack sm:text-4xl">
-          {Number(projectData.robuxPrice ?? 0)}
+      <div className="flex items-center justify-between gap-3">
+        <span className="text-xs font-black uppercase tracking-widest text-inkBlack/70">
+          {translate('product.priceLabel')}
         </span>
+
+        <div className="flex items-center gap-2">
+          <img
+            src="/svg/robux_logo_black.svg"
+            alt="Robux"
+            className="h-7 w-7 shrink-0 object-contain"
+            loading="lazy"
+            decoding="async"
+          />
+          <span className="text-2xl font-black leading-none text-inkBlack sm:text-3xl">
+            {Number(projectData.robuxPrice ?? 0)}
+          </span>
+        </div>
       </div>
 
       {hasPurchaseUrl ? (
@@ -306,19 +308,19 @@ export function ProductDetailsPanel({
                 : <FaRegHeart className="text-inkBlack" aria-hidden="true" />}
             </button>
 
+            <span className="shrink-0 text-xs font-black uppercase tracking-wider text-inkBlack/70">
+              {translate('modal.likes', { count: likeCount })}
+            </span>
+
             <button
               type="button"
               onClick={onShare}
-              className="cute-button cute-button-share flex h-11 flex-1 items-center justify-center gap-2 font-black text-inkBlack"
+              className="cute-button cute-button-share ml-auto flex h-11 items-center justify-center gap-2 px-6 font-black text-inkBlack"
             >
               <FaShareAlt aria-hidden="true" />
               <span>{translate('product.share')}</span>
             </button>
           </div>
-
-          <p className="text-xs font-black uppercase tracking-wider text-inkBlack/70">
-            {translate('modal.likes', { count: likeCount })}
-          </p>
         </div>
       </div>
 
