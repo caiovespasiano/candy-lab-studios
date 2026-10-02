@@ -1049,50 +1049,53 @@ function App() {
             <p className="mt-3 text-sm font-black tracking-widest uppercase text-inkBlack/80">{t('assets.subtitle')}</p>
           </div>
 
-          <div className="grid gap-6 sm:gap-10 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid items-stretch gap-6 sm:gap-10 sm:grid-cols-2 lg:grid-cols-3">
             {publishedArticleCatalog.map((projectData, projectIndex) => (
               <article
                 key={projectData.id}
-                className="group flex flex-col items-center"
+                className="group flex h-full flex-col items-center"
               >
                 <button
                   type="button"
-                  className="cute-box relative flex w-full flex-col items-center overflow-hidden bg-paperWhite p-4 text-center border-2 transition-colors duration-300 ease-out hover:border-pastelPink"
+                  className="cute-box no-lift relative flex h-full w-full flex-col items-center overflow-hidden bg-paperWhite p-4 text-center"
                   onClick={(event) => handleOpenProjectModal(projectData.id, event.currentTarget)}
                   aria-label={t('assets.openDetails', { title: projectData.title })}
                 >
-                  <div className="cute-box relative w-full aspect-4/3 overflow-hidden bg-pastelPink shadow-none p-0!">
-                    <ProjectThumbnailImage
-                      imageUrl={projectData.imageUrl}
-                      imageAlternativeText={projectData.imageAlternativeText}
-                      isAboveTheFold={projectIndex < globalAboveTheFoldProjectImageCount}
-                      className="h-full w-full object-cover filter saturate-150 transition-transform duration-500 group-hover:scale-110"
-                    />
-                    <div className="cute-box absolute -right-2 top-4 flex h-14 w-14 items-center justify-center rounded-full bg-pastelYellow shadow-none text-sm font-black uppercase text-inkBlack -rotate-12 border-2 border-white p-0!">
-                      <span className="flex items-center gap-1">
-                        {projectLikeCountByIdentifier[projectData.id]}
-                        <FaHeart aria-hidden="true" />
-                      </span>
+                  <div className="relative w-full shrink-0 overflow-hidden rounded-lg border-2 border-inkBlack bg-pastelPink">
+                    <div className="relative aspect-4/3 w-full">
+                      <ProjectThumbnailImage
+                        imageUrl={projectData.imageUrl}
+                        imageAlternativeText={projectData.imageAlternativeText}
+                        isAboveTheFold={projectIndex < globalAboveTheFoldProjectImageCount}
+                        className="h-full w-full object-cover filter saturate-150 transition-transform duration-500 group-hover:scale-110"
+                      />
+                      <div className="absolute right-2 top-2 flex h-12 w-12 items-center justify-center rounded-full border-2 border-white bg-pastelYellow text-sm font-black text-inkBlack">
+                        <span className="flex items-center gap-1">
+                          {projectLikeCountByIdentifier[projectData.id]}
+                          <FaHeart aria-hidden="true" />
+                        </span>
+                      </div>
                     </div>
                   </div>
 
-                  <div className="mt-4 sm:mt-6 mb-2 space-y-2">
-                    <h3 className="text-xl sm:text-xl font-display text-inkBlack drop-shadow-[1px_1px_0px_#ffffff]">{projectData.title}</h3>
-                    <p className="mx-auto text-xs font-bold uppercase tracking-wider text-inkBlack/70">
+                  <div className="flex w-full flex-1 flex-col items-center gap-2 pt-4 sm:pt-6">
+                    <h3 className="font-display text-xl text-inkBlack drop-shadow-[1px_1px_0px_#ffffff]">{projectData.title}</h3>
+                    <p className="text-xs font-bold uppercase tracking-wider text-inkBlack/70">
                       {projectData.subtitle}
                     </p>
-                    <div className="mx-auto mt-3 flex items-center justify-center gap-2">
+                    <div className="mt-auto flex items-center justify-center gap-2 pt-3">
                       <img
                         src="/svg/robux_logo_black.svg"
                         alt="Robux"
                         className="h-6 w-6 shrink-0 object-contain"
                         loading="lazy"
+                        decoding="async"
                       />
                       <span className="text-lg font-black leading-none text-inkBlack">
                         {Number(projectData.robuxPrice ?? 0)}
                       </span>
                     </div>
-                    <span className="cute-box mt-3 inline-flex items-center bg-paperWhite px-6 py-2 text-xs font-black uppercase tracking-wider text-inkBlack transition-colors duration-300 ease-out hover:bg-pastelPink hover:text-inkBlack">
+                    <span className="mt-3 inline-flex items-center rounded-full border-2 border-inkBlack px-6 py-2 text-xs font-black uppercase tracking-wider text-inkBlack transition-colors duration-300 ease-out hover:bg-pastelPink">
                       {t('assets.viewDetails')}
                     </span>
                   </div>

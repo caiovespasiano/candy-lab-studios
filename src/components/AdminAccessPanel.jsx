@@ -400,7 +400,7 @@ function GalleryUrlEditor({
           onChange={(event) => setGalleryUrlInputValue(event.target.value)}
           onKeyDown={handleGalleryUrlInputKeyDown}
           placeholder="https://exemplo.com/imagem.jpg"
-          className="cute-input flex-1 text-sm"
+          className="cute-input-soft flex-1 text-sm"
         />
         <button
           type="button"
@@ -512,7 +512,7 @@ function ArticleFormFields({
         <label className="text-xs font-black uppercase tracking-wider text-inkBlack">
           Título
           <input
-            className="cute-input mt-2 w-full"
+            className="cute-input-soft mt-2 w-full"
             name="title"
             type="text"
             value={formState.title}
@@ -524,7 +524,7 @@ function ArticleFormFields({
         <label className="text-xs font-black uppercase tracking-wider text-inkBlack">
           Subtítulo
           <input
-            className="cute-input mt-2 w-full"
+            className="cute-input-soft mt-2 w-full"
             name="subtitle"
             type="text"
             value={formState.subtitle}
@@ -536,7 +536,7 @@ function ArticleFormFields({
         <label className="text-xs font-black uppercase tracking-wider text-inkBlack">
           Resumo curto
           <textarea
-            className="cute-input mt-2 w-full resize-none"
+            className="cute-input-soft mt-2 w-full resize-none"
             name="summary"
             rows="2"
             placeholder="Uma ou duas frases. Vem logo abaixo do preço, na coluna direita."
@@ -553,7 +553,7 @@ function ArticleFormFields({
         <label className="text-xs font-black uppercase tracking-wider text-inkBlack">
           Preço em Robux
           <input
-            className="cute-input mt-2 w-full"
+            className="cute-input-soft mt-2 w-full"
             name="robuxPrice"
             type="number"
             min="0"
@@ -567,7 +567,7 @@ function ArticleFormFields({
         <label className="text-xs font-black uppercase tracking-wider text-inkBlack">
           Link da loja
           <input
-            className="cute-input mt-2 w-full"
+            className="cute-input-soft mt-2 w-full"
             name="purchaseUrl"
             type="url"
             placeholder="https://www.roblox.com/catalog/..."
@@ -587,7 +587,7 @@ function ArticleFormFields({
         <label className="text-xs font-black uppercase tracking-wider text-inkBlack">
           Texto alternativo da imagem
           <input
-            className="cute-input mt-2 w-full"
+            className="cute-input-soft mt-2 w-full"
             name="imageAlternativeText"
             type="text"
             placeholder="Descreva o asset para quem usa leitor de tela"
@@ -607,7 +607,7 @@ function ArticleFormFields({
 
       <AdminFormSection title="Descrição completa" description="Aparece abaixo da galeria, com quebra de linha preservada.">
         <textarea
-          className="cute-input w-full resize-y"
+          className="cute-input-soft w-full resize-y"
           name="description"
           rows="8"
           value={formState.description}
@@ -620,7 +620,7 @@ function ArticleFormFields({
         <label className="text-xs font-black uppercase tracking-wider text-inkBlack">
           Modelado em
           <select
-            className="cute-input mt-2 w-full"
+            className="cute-input-soft mt-2 w-full"
             name="authoringSoftware"
             value={formState.authoringSoftware}
             onChange={onInputChange}
@@ -636,7 +636,7 @@ function ArticleFormFields({
         <label className="text-xs font-black uppercase tracking-wider text-inkBlack">
           Formatos dos arquivos
           <input
-            className="cute-input mt-2 w-full"
+            className="cute-input-soft mt-2 w-full"
             name="fileFormatsDraftText"
             type="text"
             placeholder="FBX, OBJ, PNG, BLEND"
@@ -649,7 +649,7 @@ function ArticleFormFields({
         <label className="text-xs font-black uppercase tracking-wider text-inkBlack">
           Aviso de copyright
           <textarea
-            className="cute-input mt-2 w-full resize-none"
+            className="cute-input-soft mt-2 w-full resize-none"
             name="copyrightNotice"
             rows="2"
             placeholder="Deixe vazio para usar o aviso padrão do site."
@@ -663,7 +663,7 @@ function ArticleFormFields({
         <label className="text-xs font-black uppercase tracking-wider text-inkBlack">
           Tags
           <input
-            className="cute-input mt-2 w-full"
+            className="cute-input-soft mt-2 w-full"
             name="tagsDraftText"
             type="text"
             placeholder="mochila, ugc, pastel"
@@ -1444,7 +1444,7 @@ export function AdminAccessPanel({ articlePublicationController, onArticleCatalo
             <label className="text-xs font-black uppercase tracking-wider text-inkBlack">
               Usuário
               <input
-                className="cute-input mt-2 w-full"
+                className="cute-input-soft mt-2 w-full"
                 name="username"
                 type="text"
                 value={adminCredentialsFormState.username}
@@ -1457,7 +1457,7 @@ export function AdminAccessPanel({ articlePublicationController, onArticleCatalo
             <label className="text-xs font-black uppercase tracking-wider text-inkBlack">
               Senha
               <input
-                className="cute-input mt-2 w-full"
+                className="cute-input-soft mt-2 w-full"
                 name="password"
                 type="password"
                 value={adminCredentialsFormState.password}
@@ -1470,7 +1470,7 @@ export function AdminAccessPanel({ articlePublicationController, onArticleCatalo
             <label className="text-xs font-black uppercase tracking-wider text-inkBlack">
               Código de verificação
               <input
-                className="cute-input mt-2 w-full"
+                className="cute-input-soft mt-2 w-full"
                 name="verificationCode"
                 type="password"
                 value={adminCredentialsFormState.verificationCode}
@@ -1614,7 +1614,7 @@ export function AdminAccessPanel({ articlePublicationController, onArticleCatalo
                 onChange={handleBackgroundHexColorChange}
                 aria-label="Cor de fundo global da landing"
               />
-              <span className="cute-input inline-block w-auto px-3 py-1 text-sm font-black normal-case tracking-normal">
+              <span className="cute-input-soft inline-block w-auto px-3 py-1 text-sm font-black normal-case tracking-normal">
                 {globalBackgroundHexColor}
               </span>
             </label>
@@ -1628,7 +1628,7 @@ export function AdminAccessPanel({ articlePublicationController, onArticleCatalo
                 onChange={handleGlobalYellowThemeHexColorChange}
                 aria-label="Cor global do tema"
               />
-              <span className="cute-input inline-block w-auto px-3 py-1 text-sm font-black normal-case tracking-normal">
+              <span className="cute-input-soft inline-block w-auto px-3 py-1 text-sm font-black normal-case tracking-normal">
                 {globalYellowThemeHexColor}
               </span>
             </label>
@@ -1636,7 +1636,7 @@ export function AdminAccessPanel({ articlePublicationController, onArticleCatalo
             <label className="mt-5 grid gap-2 text-xs font-black uppercase tracking-wider text-inkBlack">
               Imagem de fundo da landing
               <input
-                className="cute-input w-full"
+                className="cute-input-soft w-full"
                 type="text"
                 value={globalBackgroundImageUrl}
                 onChange={handleBackgroundImageUrlChange}
