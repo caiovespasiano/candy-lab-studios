@@ -73,6 +73,13 @@
     @apply min-w-0 rounded-xl border-4 border-solid border-inkBlack bg-paperWhite px-3 py-2 font-bold text-inkBlack outline-none transition-colors duration-200 ease-out focus:border-dashed active:border-dashed sm:px-4 sm:py-3;
   }
 
+  /* Variante para surfaces administrativas, onde o offset preto de 4px
+     compete com a hierarquia dos cartoes ao redor. So a borda engrossa no
+     foco, para o estado ativo continuar legivel. */
+  .cute-input-soft {
+    @apply min-w-0 rounded-xl border-2 border-solid border-inkBlack/25 bg-paperWhite px-3 py-2 font-bold text-inkBlack outline-none transition-colors duration-200 ease-out focus:border-inkBlack active:border-inkBlack sm:px-4 sm:py-3;
+  }
+
   .header-candy-float-layer {
     @apply pointer-events-none absolute inset-x-0 top-0 h-1/2 overflow-hidden;
   }
