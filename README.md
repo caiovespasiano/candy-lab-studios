@@ -173,7 +173,13 @@ Production server behavior:
 - POST /api/admin/logout
 - GET /api/admin/articles
 - POST /api/admin/articles
+- GET /api/project/preferences
+- GET /api/admin/project/preferences
+- POST /api/admin/project/preferences
+- GET /api/admin/upload-image
 - POST /api/admin/upload-image
+- DELETE /api/admin/upload-image
+- POST /api/contact
 
 ## Testing
 
