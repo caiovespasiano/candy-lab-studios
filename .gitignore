@@ -28,5 +28,8 @@ dist-ssr
 *.sln
 *.sw?
 
+# Runtime contact submissions contain visitor PII - never commit
+data/contactSubmissions.json
+
 # Screenshots gerados pelo script de inspecao visual
 scripts/shots/
